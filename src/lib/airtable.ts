@@ -293,13 +293,13 @@ export async function getUsers(): Promise<User[]> {
   try {
     const records = await usersTable.select().all()
     
-    return records.map((record: any) => ({
+    return records.map((record: any, index: number) => ({
       id: record.id,
-      userId: record.get('UserID') as number,
-      name: record.get('Name') as string,
-      email: record.get('Email') as string,
-      role: record.get('Role') as User['role'],
-      createdAt: record.get('CreatedAt') as string,
+      userId: record.get('UserID') as number | undefined || index + 1,
+      name: record.get('Name') as string || 'Unnamed User',
+      email: record.get('Email') as string || `user${index + 1}@example.com`,
+      role: record.get('Role') as User['role'] || 'Caregiver',
+      createdAt: record.get('CreatedAt') as string | undefined,
     }))
   } catch (error) {
     console.error('Error fetching Users:', error)
@@ -313,11 +313,11 @@ export async function getUser(id: string): Promise<User | null> {
     
     return {
       id: record.id,
-      userId: record.get('UserID') as number,
-      name: record.get('Name') as string,
-      email: record.get('Email') as string,
-      role: record.get('Role') as User['role'],
-      createdAt: record.get('CreatedAt') as string,
+      userId: record.get('UserID') as number | undefined || 0,
+      name: record.get('Name') as string || 'Unnamed User',
+      email: record.get('Email') as string || 'user@example.com',
+      role: record.get('Role') as User['role'] || 'Caregiver',
+      createdAt: record.get('CreatedAt') as string | undefined,
     }
   } catch (error) {
     console.error('Error fetching User:', error)
@@ -339,11 +339,11 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     const record = records[0]
     return {
       id: record.id,
-      userId: record.get('UserID') as number,
-      name: record.get('Name') as string,
-      email: record.get('Email') as string,
-      role: record.get('Role') as User['role'],
-      createdAt: record.get('CreatedAt') as string,
+      userId: record.get('UserID') as number | undefined || 0,
+      name: record.get('Name') as string || 'Unnamed User',
+      email: record.get('Email') as string || 'user@example.com',
+      role: record.get('Role') as User['role'] || 'Caregiver',
+      createdAt: record.get('CreatedAt') as string | undefined,
     }
   } catch (error) {
     console.error('Error fetching User by email:', error)
@@ -359,17 +359,17 @@ export async function getOutcomes(serviceType?: 'CLS' | 'Supported Employment'):
   try {
     const selectOptions = serviceType
       ? { filterByFormula: `{ServiceType} = '${serviceType}'`, sort: [{ field: 'Order', direction: 'asc' as const }] }
-      : { sort: [{ field: 'Order', direction: 'asc' as const }] }
+      : { sort: [{ field: 'Name', direction: 'asc' as const }] }
 
     const records = await outcomesTable.select(selectOptions).all()
     
-    return records.map((record: any) => ({
+    return records.map((record: any, index: number) => ({
       id: record.id,
-      outcomeId: record.get('OutcomeID') as number,
-      title: record.get('Title') as string,
-      description: record.get('Description') as string,
-      serviceType: record.get('ServiceType') as Outcome['serviceType'],
-      order: record.get('Order') as number,
+      outcomeId: record.get('OutcomeID') as number | undefined || index + 1,
+      title: record.get('Title') as string || record.get('Name') as string || 'Unnamed Outcome',
+      description: record.get('Description') as string || record.get('Name') as string || '',
+      serviceType: record.get('ServiceType') as Outcome['serviceType'] || serviceType || 'CLS',
+      order: record.get('Order') as number | undefined || index + 1,
     }))
   } catch (error) {
     console.error('Error fetching Outcomes:', error)
@@ -383,11 +383,11 @@ export async function getOutcome(id: string): Promise<Outcome | null> {
     
     return {
       id: record.id,
-      outcomeId: record.get('OutcomeID') as number,
-      title: record.get('Title') as string,
-      description: record.get('Description') as string,
-      serviceType: record.get('ServiceType') as Outcome['serviceType'],
-      order: record.get('Order') as number,
+      outcomeId: record.get('OutcomeID') as number | undefined || 0,
+      title: record.get('Title') as string || record.get('Name') as string || 'Unnamed Outcome',
+      description: record.get('Description') as string || record.get('Name') as string || '',
+      serviceType: record.get('ServiceType') as Outcome['serviceType'] || 'CLS',
+      order: record.get('Order') as number | undefined || 0,
     }
   } catch (error) {
     console.error('Error fetching Outcome:', error)

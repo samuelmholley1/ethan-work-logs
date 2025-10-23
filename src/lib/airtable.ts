@@ -43,6 +43,7 @@ export async function createWorkSession(
     return {
       id: record[0].id,
       sessionId: record[0].get('SessionID') as number,
+      userId: (record[0].get('User') as string[])?.[0] || '',
       date: record[0].get('Date') as string,
       serviceType: record[0].get('ServiceType') as WorkSession['serviceType'],
       status: record[0].get('Status') as WorkSession['status'],
@@ -61,6 +62,7 @@ export async function getWorkSession(id: string): Promise<WorkSession | null> {
     return {
       id: record.id,
       sessionId: record.get('SessionID') as number,
+      userId: (record.get('User') as string[])?.[0] || '',
       date: record.get('Date') as string,
       serviceType: record.get('ServiceType') as WorkSession['serviceType'],
       status: record.get('Status') as WorkSession['status'],
@@ -189,6 +191,7 @@ export async function createBehavioralEvent(
       id: record[0].id,
       eventId: record[0].get('EventID') as number,
       workSessionId: (record[0].get('WorkSession') as string[])[0],
+      outcomeId: (record[0].get('Outcome') as string[])?.[0] || '',
       timestamp: record[0].get('Timestamp') as string,
       eventType: record[0].get('EventType') as BehavioralEvent['eventType'],
       promptCount: record[0].get('PromptCount') as number | undefined,
@@ -269,6 +272,7 @@ export async function getBehavioralEventsByDate(
       id: record.id,
       eventId: record.get('EventID') as number,
       workSessionId: (record.get('WorkSession') as string[])[0],
+      outcomeId: (record.get('Outcome') as string[])?.[0] || '',
       timestamp: record.get('Timestamp') as string,
       eventType: record.get('EventType') as BehavioralEvent['eventType'],
       promptCount: record.get('PromptCount') as number | undefined,

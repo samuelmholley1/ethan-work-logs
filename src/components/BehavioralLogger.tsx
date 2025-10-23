@@ -21,6 +21,14 @@ export default function BehavioralLogger() {
   const [loading, setLoading] = useState(false)
   const [comment, setComment] = useState('')
   const [showCommentModal, setShowCommentModal] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [recentEvents, setRecentEvents] = useState<Array<{
+    id: string
+    outcomeId: string
+    eventType: string
+    promptCount: number
+    timestamp: Date
+  }>>([])
 
   // Load outcomes when service type changes
   useEffect(() => {
@@ -57,6 +65,14 @@ export default function BehavioralLogger() {
     loadOutcomes()
   }, [activeServiceType, selectedOutcome])
 
+  // Auto-dismiss success toast after 2 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => setShowSuccess(false), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccess])
+
   // Log event helper
   const handleLogEvent = async (
     eventType: 'VP' | 'PP' | 'I' | 'U',
@@ -71,6 +87,19 @@ export default function BehavioralLogger() {
 
     try {
       await logBehavioralEvent(outcomeId, eventType, promptCount, eventComment)
+      
+      // Add to recent events history
+      const newEvent = {
+        id: Date.now().toString(),
+        outcomeId,
+        eventType,
+        promptCount,
+        timestamp: new Date(),
+      }
+      setRecentEvents((prev) => [newEvent, ...prev.slice(0, 4)]) // Keep last 5 events
+      
+      // Show success feedback
+      setShowSuccess(true)
       
       // Haptic feedback (if supported)
       if ('vibrate' in navigator) {
@@ -186,6 +215,48 @@ export default function BehavioralLogger() {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-4 right-4 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-slide-in">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <span>Event logged!</span>
+        </div>
+      )}
+
+      {/* Recent Events History */}
+      {recentEvents.length > 0 && (
+        <div className="mb-6 bg-blue-50 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-blue-900 mb-3">Recent Events (Last 5)</h3>
+          <div className="space-y-2">
+            {recentEvents.map((event) => {
+              const outcome = outcomes.find((o) => o.id === event.outcomeId)
+              return (
+                <div key={event.id} className="flex items-center justify-between text-sm bg-white rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-1 rounded font-bold ${
+                      event.eventType === 'I' ? 'bg-green-100 text-green-800' :
+                      event.eventType === 'U' ? 'bg-red-100 text-red-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {event.eventType}
+                    </span>
+                    <span className="text-gray-700">{outcome?.outcomeName || 'Unknown'}</span>
+                    {event.promptCount > 0 && (
+                      <span className="text-gray-500">({event.promptCount} prompts)</span>
+                    )}
+                  </div>
+                  <span className="text-gray-400 text-xs">
+                    {event.timestamp.toLocaleTimeString()}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Outcome Selector */}
       <div className="mb-6">
         <label className="block text-sm font-semibold text-gray-700 mb-2">

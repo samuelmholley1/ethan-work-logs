@@ -30,6 +30,8 @@ export default function Timer() {
   const [pendingSync, setPendingSync] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const [isBreak, setIsBreak] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
 
   // Update elapsed time every second
   useEffect(() => {
@@ -42,11 +44,19 @@ export default function Timer() {
     return () => clearInterval(interval)
   }, [isActive, updateElapsedTime])
 
-  // Check for pending sync data
+  // Check for pending sync data and update last sync time
   useEffect(() => {
     const checkSync = async () => {
       const pending = await hasPendingData()
       setPendingSync(pending)
+      
+      // If not pending, we just synced successfully
+      if (!pending) {
+        const lastSync = localStorage.getItem('lastSyncTime')
+        if (lastSync) {
+          setLastSyncTime(new Date(lastSync))
+        }
+      }
     }
 
     checkSync()
@@ -69,6 +79,14 @@ export default function Timer() {
       window.removeEventListener('offline', handleOffline)
     }
   }, [])
+
+  // Auto-dismiss success toast after 3 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => setShowSuccess(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccess])
 
   // Update break status
   useEffect(() => {
@@ -93,6 +111,8 @@ export default function Timer() {
     try {
       await clockIn(serviceType, userId)
       setShowServiceModal(false)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
       console.error('Error clocking in:', error)
       alert('Failed to clock in. Please try again.')
@@ -101,10 +121,16 @@ export default function Timer() {
 
   // Handle Clock Out button
   const handleClockOut = async () => {
-    if (!confirm('Clock out and end this work session?')) return
+    const hours = Math.floor(elapsedSeconds / 3600)
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60)
+    const timeWorked = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+    
+    if (!confirm(`Clock out and end this work session?\n\nTime worked: ${timeWorked}\n\nThis action cannot be undone.`)) return
 
     try {
       await clockOut()
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
       console.error('Error clocking out:', error)
       alert('Failed to clock out. Please try again.')
@@ -133,26 +159,45 @@ export default function Timer() {
 
   return (
     <div className="w-full max-w-md mx-auto p-6">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-slide-in">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <span>Success! Data saved.</span>
+        </div>
+      )}
+
       {/* Status Indicators */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          {/* Online/Offline Indicator */}
-          <div
-            className={`w-3 h-3 rounded-full ${
-              isOnline ? 'bg-green-500' : 'bg-red-500'
-            }`}
-            title={isOnline ? 'Online' : 'Offline'}
-          />
-          <span className="text-sm text-gray-600">
-            {isOnline ? 'Online' : 'Offline Mode'}
-          </span>
+      <div className="flex flex-col gap-2 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Online/Offline Indicator */}
+            <div
+              className={`w-3 h-3 rounded-full ${
+                isOnline ? 'bg-green-500' : 'bg-red-500'
+              }`}
+              title={isOnline ? 'Online' : 'Offline'}
+            />
+            <span className="text-sm text-gray-600">
+              {isOnline ? 'Online' : 'Offline Mode'}
+            </span>
+          </div>
+
+          {/* Sync Status */}
+          {pendingSync && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse" />
+              <span className="text-sm text-gray-600">Syncing...</span>
+            </div>
+          )}
         </div>
 
-        {/* Sync Status */}
-        {pendingSync && (
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse" />
-            <span className="text-sm text-gray-600">Syncing...</span>
+        {/* Last Sync Time */}
+        {lastSyncTime && !pendingSync && (
+          <div className="text-xs text-gray-500 text-right">
+            Last synced: {lastSyncTime.toLocaleTimeString()}
           </div>
         )}
       </div>

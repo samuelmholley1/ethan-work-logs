@@ -73,7 +73,18 @@ export const useTimerStore = create<TimerState>()(
         // Prevent double clock-in
         if (state.activeSessionId) {
           console.warn('Already clocked in')
-          return
+          throw new Error('Already clocked in. Please clock out first.')
+        }
+
+        // Validate inputs
+        if (!serviceType || !userId) {
+          throw new Error('Service type and user ID are required')
+        }
+
+        // Validate service type
+        const validServiceTypes = ['Morning Services', 'Daytime Services', 'PM Services']
+        if (!validServiceTypes.includes(serviceType)) {
+          throw new Error(`Invalid service type: ${serviceType}`)
         }
 
         const sessionId = uuidv4()
@@ -129,10 +140,16 @@ export const useTimerStore = create<TimerState>()(
 
         if (!state.activeSessionId) {
           console.warn('Not clocked in')
-          return
+          throw new Error('Not clocked in')
         }
 
         const now = new Date()
+
+        // Check for suspiciously long sessions (> 16 hours)
+        if (state.elapsedSeconds > 16 * 60 * 60) {
+          const hours = Math.floor(state.elapsedSeconds / 3600)
+          console.warn(`Session is ${hours} hours long - possible forgotten clock-out`)
+        }
 
         try {
           // Close active time block if exists

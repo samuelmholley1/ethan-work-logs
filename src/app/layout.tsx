@@ -5,24 +5,24 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Ukiah United Methodist Church - Liturgist Signup',
-  description: 'Sign up to serve as a liturgist for worship services at Ukiah United Methodist Church',
+  title: 'Ethan Work Logger - Time & Data Tracking',
+  description: 'Caregiver time tracking and behavioral data logging application',
   manifest: '/site.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'UUMC Liturgists'
+    title: 'Work Logger'
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: 'website',
-    siteName: 'UUMC Liturgist Signup',
-    title: 'Ukiah United Methodist Church - Liturgist Signup',
-    description: 'Sign up to serve as a liturgist for worship services',
+    siteName: 'Ethan Work Logger',
+    title: 'Ethan Work Logger - Time & Data Tracking',
+    description: 'Simple time tracking and data logging for caregivers',
   },
-  keywords: ['church', 'liturgist', 'signup', 'ukiah', 'methodist', 'worship', 'volunteer']
+  keywords: ['caregiver', 'time tracking', 'data logging', 'work log', 'behavioral data']
 }
 
 export const viewport: Viewport = {
@@ -30,7 +30,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#2563eb',
+  themeColor: '#059669',
   viewportFit: 'cover'
 }
 
@@ -47,7 +47,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="UUMC Liturgists" />
+        <meta name="apple-mobile-web-app-title" content="Work Logger" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

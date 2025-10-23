@@ -101,7 +101,7 @@ async function syncTimeBlocks(): Promise<{ success: number; failed: number }> {
         const result = await createTimeBlock({
           WorkSession: [session.airtableId],
           StartTime: block.startTime,
-          EndTime: block.endTime,
+          EndTime: block.endTime || undefined,
         })
 
         if (result) {
@@ -154,8 +154,8 @@ async function syncBehavioralEvents(): Promise<{ success: number; failed: number
         Outcome: [event.outcomeId],
         Timestamp: event.timestamp,
         EventType: event.eventType,
-        PromptCount: event.promptCount,
-        Comment: event.comment,
+        PromptCount: event.promptCount ?? undefined,
+        Comment: event.comment || undefined,
       })
 
       if (result) {

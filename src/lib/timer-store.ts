@@ -98,10 +98,9 @@ export const useTimerStore = create<TimerState>()(
             userId: userId,
             date: dateStr,
             serviceType: serviceType,
-            status: 'in-progress',
-            syncStatus: 'pending',
+            status: 'Active',
             createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
+            syncStatus: 'pending',
           })
 
           // Automatically start first time block
@@ -112,8 +111,6 @@ export const useTimerStore = create<TimerState>()(
             startTime: now.toISOString(),
             endTime: null,
             syncStatus: 'pending',
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
           })
 
           set({
@@ -157,15 +154,13 @@ export const useTimerStore = create<TimerState>()(
             await db.timeBlocks.update(state.activeTimeBlockId, {
               endTime: now.toISOString(),
               syncStatus: 'pending',
-              updatedAt: now.toISOString(),
             })
           }
 
           // Update session status
           await db.workSessions.update(state.activeSessionId, {
-            status: 'completed',
+            status: 'Completed',
             syncStatus: 'pending',
-            updatedAt: now.toISOString(),
           })
 
           // Reset state
@@ -210,8 +205,6 @@ export const useTimerStore = create<TimerState>()(
             startTime: now.toISOString(),
             endTime: null,
             syncStatus: 'pending',
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
           })
 
           set({
@@ -242,7 +235,6 @@ export const useTimerStore = create<TimerState>()(
           await db.timeBlocks.update(state.activeTimeBlockId, {
             endTime: now.toISOString(),
             syncStatus: 'pending',
-            updatedAt: now.toISOString(),
           })
 
           set({
@@ -285,8 +277,6 @@ export const useTimerStore = create<TimerState>()(
             promptCount: promptCount,
             comment: comment,
             syncStatus: 'pending',
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
           })
 
           console.log('Behavioral event logged:', { eventType, outcomeId, promptCount })

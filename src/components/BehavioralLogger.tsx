@@ -119,7 +119,15 @@ export default function BehavioralLogger() {
 
   // Handle VP button
   const handleVP = (outcomeId: string) => {
-    const newCount = (promptCounts[outcomeId]?.VP || 0) + 1
+    const currentCount = promptCounts[outcomeId]?.VP || 0
+    
+    // Max 99 prompts per type (reasonable limit)
+    if (currentCount >= 99) {
+      alert('Maximum prompt count reached (99). Please log the event.')
+      return
+    }
+    
+    const newCount = currentCount + 1
     setPromptCounts((prev) => ({
       ...prev,
       [outcomeId]: { ...prev[outcomeId], VP: newCount },
@@ -128,7 +136,15 @@ export default function BehavioralLogger() {
 
   // Handle PP button
   const handlePP = (outcomeId: string) => {
-    const newCount = (promptCounts[outcomeId]?.PP || 0) + 1
+    const currentCount = promptCounts[outcomeId]?.PP || 0
+    
+    // Max 99 prompts per type (reasonable limit)
+    if (currentCount >= 99) {
+      alert('Maximum prompt count reached (99). Please log the event.')
+      return
+    }
+    
+    const newCount = currentCount + 1
     setPromptCounts((prev) => ({
       ...prev,
       [outcomeId]: { ...prev[outcomeId], PP: newCount },
@@ -227,7 +243,7 @@ export default function BehavioralLogger() {
 
       {/* Recent Events History */}
       {recentEvents.length > 0 && (
-        <div className="mb-6 bg-blue-50 rounded-xl p-4">
+        <div className="mb-6 bg-blue-50 rounded-xl p-4 max-h-80 overflow-y-auto" aria-label="Recent events history">
           <h3 className="text-sm font-semibold text-blue-900 mb-3">Recent Events (Last 5)</h3>
           <div className="space-y-2">
             {recentEvents.map((event) => {
@@ -312,11 +328,12 @@ export default function BehavioralLogger() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <button
               onClick={() => handleVP(selectedOutcome)}
-              className="px-6 py-4 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-lg transition-colors relative"
+              aria-label={`Add verbal prompt. Current count: ${promptCounts[selectedOutcome]?.VP || 0}`}
+              className="px-6 py-4 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-lg transition-colors relative active:scale-95"
             >
               VP
               {promptCounts[selectedOutcome]?.VP > 0 && (
-                <span className="absolute -top-2 -right-2 w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                <span className="absolute -top-2 -right-2 w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center text-sm font-bold" aria-hidden="true">
                   {promptCounts[selectedOutcome].VP}
                 </span>
               )}
@@ -324,11 +341,12 @@ export default function BehavioralLogger() {
 
             <button
               onClick={() => handlePP(selectedOutcome)}
-              className="px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-colors relative"
+              aria-label={`Add physical prompt. Current count: ${promptCounts[selectedOutcome]?.PP || 0}`}
+              className="px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-colors relative active:scale-95"
             >
               PP
               {promptCounts[selectedOutcome]?.PP > 0 && (
-                <span className="absolute -top-2 -right-2 w-8 h-8 bg-blue-700 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                <span className="absolute -top-2 -right-2 w-8 h-8 bg-blue-700 text-white rounded-full flex items-center justify-center text-sm font-bold" aria-hidden="true">
                   {promptCounts[selectedOutcome].PP}
                 </span>
               )}
@@ -339,14 +357,16 @@ export default function BehavioralLogger() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <button
               onClick={() => handleI(selectedOutcome)}
-              className="px-6 py-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold text-lg transition-colors"
+              aria-label="Log as Independent"
+              className="px-6 py-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold text-lg transition-colors active:scale-95"
             >
               Independent (I)
             </button>
 
             <button
               onClick={() => handleU(selectedOutcome)}
-              className="px-6 py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-lg transition-colors"
+              aria-label="Log as Unsuccessful"
+              className="px-6 py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-lg transition-colors active:scale-95"
             >
               Unsuccessful (U)
             </button>

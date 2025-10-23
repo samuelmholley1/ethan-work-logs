@@ -32,6 +32,7 @@ export default function Timer() {
   const [isBreak, setIsBreak] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+  const [isLoading, setIsLoading] = useState(false) // Prevent double-clicks
 
   // Update elapsed time every second
   useEffect(() => {
@@ -108,6 +109,9 @@ export default function Timer() {
 
   // Handle service type selection
   const handleServiceSelect = async (serviceType: 'CLS' | 'Supported Employment') => {
+    if (isLoading) return // Prevent double-clicks
+    
+    setIsLoading(true)
     try {
       await clockIn(serviceType, userId)
       setShowServiceModal(false)
@@ -115,45 +119,62 @@ export default function Timer() {
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
       console.error('Error clocking in:', error)
-      alert('Failed to clock in. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to clock in. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   // Handle Clock Out button
   const handleClockOut = async () => {
+    if (isLoading) return // Prevent double-clicks
+    
     const hours = Math.floor(elapsedSeconds / 3600)
     const minutes = Math.floor((elapsedSeconds % 3600) / 60)
     const timeWorked = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
     
     if (!confirm(`Clock out and end this work session?\n\nTime worked: ${timeWorked}\n\nThis action cannot be undone.`)) return
 
+    setIsLoading(true)
     try {
       await clockOut()
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
       console.error('Error clocking out:', error)
-      alert('Failed to clock out. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to clock out. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   // Handle Start Break
   const handleStartBreak = async () => {
+    if (isLoading) return // Prevent double-clicks
+    
+    setIsLoading(true)
     try {
       await stopTimeBlock()
     } catch (error) {
       console.error('Error starting break:', error)
-      alert('Failed to start break. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to start break. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   // Handle End Break
   const handleEndBreak = async () => {
+    if (isLoading) return // Prevent double-clicks
+    
+    setIsLoading(true)
     try {
       await startTimeBlock()
     } catch (error) {
       console.error('Error ending break:', error)
-      alert('Failed to end break. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to end break. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -227,25 +248,40 @@ export default function Timer() {
             {!isBreak ? (
               <button
                 onClick={handleStartBreak}
-                className="w-full mb-4 px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-semibold transition-colors"
+                disabled={isLoading}
+                className={`w-full mb-4 px-6 py-3 rounded-xl font-semibold transition-colors ${
+                  isLoading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                }`}
               >
-                Start Break
+                {isLoading ? 'Processing...' : 'Start Break'}
               </button>
             ) : (
               <button
                 onClick={handleEndBreak}
-                className="w-full mb-4 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
+                disabled={isLoading}
+                className={`w-full mb-4 px-6 py-3 rounded-xl font-semibold transition-colors ${
+                  isLoading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                }`}
               >
-                End Break
+                {isLoading ? 'Processing...' : 'End Break'}
               </button>
             )}
 
             {/* Clock Out Button */}
             <button
               onClick={handleClockOut}
-              className="w-full px-6 py-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-lg transition-colors"
+              disabled={isLoading}
+              className={`w-full px-6 py-4 rounded-xl font-bold text-lg transition-colors ${
+                isLoading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
             >
-              Clock Out
+              {isLoading ? 'Processing...' : 'Clock Out'}
             </button>
           </>
         ) : (
@@ -283,22 +319,37 @@ export default function Timer() {
             <div className="space-y-3">
               <button
                 onClick={() => handleServiceSelect('CLS')}
-                className="w-full px-6 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold text-lg transition-colors"
+                disabled={isLoading}
+                className={`w-full px-6 py-4 rounded-xl font-semibold text-lg transition-colors ${
+                  isLoading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                }`}
               >
-                Community Living Support
+                {isLoading ? 'Starting...' : 'Community Living Support'}
               </button>
 
               <button
                 onClick={() => handleServiceSelect('Supported Employment')}
-                className="w-full px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold text-lg transition-colors"
+                disabled={isLoading}
+                className={`w-full px-6 py-4 rounded-xl font-semibold text-lg transition-colors ${
+                  isLoading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
               >
-                Supported Employment
+                {isLoading ? 'Starting...' : 'Supported Employment'}
               </button>
             </div>
 
             <button
               onClick={() => setShowServiceModal(false)}
-              className="w-full mt-4 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-colors"
+              disabled={isLoading}
+              className={`w-full mt-4 px-6 py-3 rounded-xl font-semibold transition-colors ${
+                isLoading
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
             >
               Cancel
             </button>

@@ -297,9 +297,18 @@ export const useTimerStore = create<TimerState>()(
         const now = Date.now()
         const deltaSeconds = Math.floor((now - state.lastUpdateTime) / 1000)
         
+        // Protect against computer sleep/wake - cap delta at 1 hour
+        const cappedDelta = Math.min(deltaSeconds, 3600)
+        
         if (deltaSeconds >= 1) {
+          // Warn if session is suspiciously long (> 24 hours)
+          const newTotal = state.elapsedSeconds + cappedDelta
+          if (newTotal > 24 * 60 * 60) {
+            console.warn('Timer has been running for more than 24 hours. Consider clocking out.')
+          }
+          
           set({
-            elapsedSeconds: state.elapsedSeconds + deltaSeconds,
+            elapsedSeconds: newTotal,
             lastUpdateTime: now,
           })
         }

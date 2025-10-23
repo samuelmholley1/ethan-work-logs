@@ -53,9 +53,13 @@ export default function Timer() {
       
       // If not pending, we just synced successfully
       if (!pending) {
-        const lastSync = localStorage.getItem('lastSyncTime')
-        if (lastSync) {
-          setLastSyncTime(new Date(lastSync))
+        try {
+          const lastSync = localStorage.getItem('lastSyncTime')
+          if (lastSync) {
+            setLastSyncTime(new Date(lastSync))
+          }
+        } catch (e) {
+          console.warn('Failed to read lastSyncTime from localStorage:', e)
         }
       }
     }

@@ -237,7 +237,11 @@ export async function syncPendingData(): Promise<{
 
     // Update last sync time if successful
     if (totalSynced > 0 && typeof window !== 'undefined') {
-      localStorage.setItem('lastSyncTime', new Date().toISOString())
+      try {
+        localStorage.setItem('lastSyncTime', new Date().toISOString())
+      } catch (e) {
+        console.warn('Failed to save last sync time to localStorage:', e)
+      }
     }
 
     return {

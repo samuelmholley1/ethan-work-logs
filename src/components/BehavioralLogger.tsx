@@ -278,17 +278,23 @@ export default function BehavioralLogger() {
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Select Outcome:
         </label>
-        <select
-          value={selectedOutcome || ''}
-          onChange={(e) => setSelectedOutcome(e.target.value)}
-          className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 font-medium focus:border-emerald-500 focus:outline-none"
-        >
-          {outcomes.map((outcome) => (
-            <option key={outcome.id} value={outcome.id}>
-              {outcome.title}
-            </option>
-          ))}
-        </select>
+        {outcomes.length === 0 ? (
+          <div className="w-full px-4 py-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl text-yellow-800 font-medium">
+            {loading ? 'Loading outcomes...' : 'No outcomes found. Please check your Airtable setup.'}
+          </div>
+        ) : (
+          <select
+            value={selectedOutcome || ''}
+            onChange={(e) => setSelectedOutcome(e.target.value)}
+            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 font-medium focus:border-emerald-500 focus:outline-none"
+          >
+            {outcomes.map((outcome) => (
+              <option key={outcome.id} value={outcome.id}>
+                {outcome.title}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Selected Outcome Details */}

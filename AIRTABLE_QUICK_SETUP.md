@@ -36,30 +36,33 @@ You need to create the 5 tables manually first (the script will populate them):
 
 ### Table 1: Users
 1. In your base, you'll see "Table 1" - rename it to **"Users"**
-2. Keep the default "Name" field
+2. ✅ **Keep the default "Name" field** (Airtable requires at least one field)
 
 ### Table 2: Outcomes
 1. Click **"+"** next to Users tab
 2. Choose **"Create empty table"**
 3. Name it: **"Outcomes"**
-4. Rename the default "Name" field to **"OutcomeName"**
+4. ✅ **Keep the default "Name" field**
 
 ### Table 3: WorkSessions
 1. Click **"+"** next to Outcomes tab
 2. Choose **"Create empty table"**
 3. Name it: **"WorkSessions"**
+4. ✅ **Keep the default "Name" field**
 
 ### Table 4: TimeBlocks
 1. Click **"+"** next to WorkSessions tab
 2. Choose **"Create empty table"**
 3. Name it: **"TimeBlocks"**
+4. ✅ **Keep the default "Name" field**
 
 ### Table 5: BehavioralEvents
 1. Click **"+"** next to TimeBlocks tab
 2. Choose **"Create empty table"**
 3. Name it: **"BehavioralEvents"**
+4. ✅ **Keep the default "Name" field**
 
-✅ You have 5 empty tables!
+✅ You have 5 tables! The script will use the "Name" field for data.
 
 ---
 

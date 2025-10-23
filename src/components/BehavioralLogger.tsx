@@ -258,7 +258,7 @@ export default function BehavioralLogger() {
                     }`}>
                       {event.eventType}
                     </span>
-                    <span className="text-gray-700">{outcome?.outcomeName || 'Unknown'}</span>
+                    <span className="text-gray-700">{outcome?.title || 'Unknown'}</span>
                     {event.promptCount > 0 && (
                       <span className="text-gray-500">({event.promptCount} prompts)</span>
                     )}
@@ -285,7 +285,7 @@ export default function BehavioralLogger() {
         >
           {outcomes.map((outcome) => (
             <option key={outcome.id} value={outcome.id}>
-              {outcome.outcomeName}
+              {outcome.title}
             </option>
           ))}
         </select>
@@ -295,7 +295,7 @@ export default function BehavioralLogger() {
       {selectedOutcome && (
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
           <h3 className="text-lg font-bold text-gray-900 mb-2">
-            {outcomes.find((o) => o.id === selectedOutcome)?.outcomeName}
+            {outcomes.find((o) => o.id === selectedOutcome)?.title}
           </h3>
           <p className="text-sm text-gray-600 mb-4">
             {outcomes.find((o) => o.id === selectedOutcome)?.description}

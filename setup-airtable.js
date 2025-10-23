@@ -82,7 +82,7 @@ async function main() {
     const outcomes = await base('Outcomes').create([
       {
         fields: {
-          OutcomeName: 'Medication Management',
+          Name: 'Medication Management',
           Description: 'Client takes prescribed medication independently',
           ServiceType: 'CLS',
           Active: true,
@@ -91,7 +91,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Personal Hygiene',
+          Name: 'Personal Hygiene',
           Description: 'Client completes hygiene routine (shower/brush teeth)',
           ServiceType: 'CLS',
           Active: true,
@@ -100,7 +100,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Meal Preparation',
+          Name: 'Meal Preparation',
           Description: 'Client prepares meals safely',
           ServiceType: 'CLS',
           Active: true,
@@ -109,7 +109,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Money Management',
+          Name: 'Money Management',
           Description: 'Client manages money for purchases',
           ServiceType: 'CLS',
           Active: true,
@@ -118,7 +118,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Task Completion',
+          Name: 'Task Completion',
           Description: 'Employee completes assigned work task',
           ServiceType: 'Supported Employment',
           Active: true,
@@ -127,7 +127,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Following Instructions',
+          Name: 'Following Instructions',
           Description: 'Employee follows multi-step instructions',
           ServiceType: 'Supported Employment',
           Active: true,
@@ -136,7 +136,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Social Interaction',
+          Name: 'Social Interaction',
           Description: 'Employee interacts appropriately with coworkers',
           ServiceType: 'Supported Employment',
           Active: true,
@@ -145,7 +145,7 @@ async function main() {
       },
       {
         fields: {
-          OutcomeName: 'Time Management',
+          Name: 'Time Management',
           Description: 'Employee arrives on time and manages breaks',
           ServiceType: 'Supported Employment',
           Active: true,

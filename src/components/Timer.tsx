@@ -36,14 +36,15 @@ export default function Timer() {
 
   // Update elapsed time every second
   useEffect(() => {
-    if (!isActive()) return
+    const active = isActive()
+    if (!active) return
 
     const interval = setInterval(() => {
       updateElapsedTime()
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isActive, updateElapsedTime])
+  }, [activeSessionId, activeTimeBlockId, updateElapsedTime, isActive])
 
   // Check for pending sync data and update last sync time
   useEffect(() => {

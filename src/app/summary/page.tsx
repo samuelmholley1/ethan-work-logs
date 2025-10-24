@@ -73,11 +73,31 @@ async function getWeekData(weekStart?: string) {
     }
   }
 
-  return { sessions, timeBlocks, weekStart: start };
+  // Fetch behavioral events for these sessions
+  const behavioralEvents: BehavioralEventData[] = [];
+  
+  if (sessionIds.length > 0) {
+    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORAL_EVENTS_TABLE_ID!).select({
+      filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
+    }).all();
+
+    for (const record of eventRecords) {
+      const sessionLinks = record.get('WorkSession') as string[] || [];
+      behavioralEvents.push({
+        id: record.id,
+        eventType: record.get('EventType') as string || record.get('Name') as string,
+        promptCount: record.get('PromptCount') as number || null,
+        timestamp: record.get('Timestamp') as string || record.get('Name') as string,
+        sessionId: sessionLinks[0] || '',
+      });
+    }
+  }
+
+  return { sessions, timeBlocks, behavioralEvents, weekStart: start };
 }
 
 async function WeekSummary({ weekStart }: { weekStart?: string }) {
-  const { sessions, timeBlocks, weekStart: start } = await getWeekData(weekStart);
+  const { sessions, timeBlocks, behavioralEvents, weekStart: start } = await getWeekData(weekStart);
 
   // Group time blocks by session
   const sessionMap = new Map<string, TimeBlockData[]>();
@@ -213,20 +233,73 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
             </table>
           </div>
 
-          <div className="mt-6 flex gap-4">
+          {/* Behavioral Data Tally */}
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Behavioral Data Summary
+            </h3>
+            
+            {behavioralEvents.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                No behavioral events recorded for this week.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {['VP', 'PP', 'I', 'U'].map(eventType => {
+                  const events = behavioralEvents.filter(e => e.eventType === eventType);
+                  const totalPrompts = events.reduce((sum, e) => sum + (e.promptCount || 0), 0);
+                  
+                  return (
+                    <div key={eventType} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="text-2xl font-bold text-emerald-600 mb-1">
+                        {eventType}
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900 mb-2">
+                        {events.length}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {totalPrompts > 0 && (
+                          <span className="font-medium">
+                            {totalPrompts} prompts
+                          </span>
+                        )}
+                        {events.length === 1 ? ' event' : ' events'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-4">
             <Link
               href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
               target="_blank"
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
             >
-              View PDF Template
+              📄 View Timesheet PDF
             </Link>
             <Link
               href={`/api/generate-pdf/timesheet?week=${format(start, 'yyyy-MM-dd')}`}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               download
             >
-              Download PDF
+              ⬇️ Download Timesheet PDF
+            </Link>
+            <Link
+              href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
+              target="_blank"
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+            >
+              📊 View Behavioral Data Sheet
+            </Link>
+            <Link
+              href={`/api/generate-pdf/behavioral-sheet?month=${format(start, 'yyyy-MM')}`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              download
+            >
+              ⬇️ Download Behavioral Data Sheet
             </Link>
           </div>
         </>

@@ -192,11 +192,19 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
           /* Page break handling for multiple pages */
           .page-break {
             page-break-after: always;
+            page-break-inside: avoid;
+          }
+          
+          .outcome-row {
+            page-break-inside: avoid;
           }
           
           @media print {
             .page-break {
               page-break-after: always;
+            }
+            tbody tr {
+              page-break-inside: avoid;
             }
           }
         `}</style>
@@ -244,7 +252,7 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
               </tr>
             ) : (
               data.outcomes.map((outcome, idx) => (
-                <tr key={outcome.id}>
+                <tr key={outcome.id} className="outcome-row">
                   <td className="outcome-cell">
                     <div style={{ fontWeight: 'bold' }}>{outcome.title}</div>
                     {outcome.description && (

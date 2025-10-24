@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
 import Airtable from 'airtable';
 import { apply15MinuteRounding, formatDuration, calculateTotalDuration, type RoundedTimeBlock } from '@/lib/rounding';
+import { PDFDownloadLink } from '@/components/PDFDownloadLink';
+import { WeekNavigator } from '@/components/WeekNavigator';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +34,10 @@ interface BehavioralEventData {
   sessionId: string;
 }
 
-async function getWeekData(weekStart?: string) {
-  const start = weekStart ? new Date(weekStart) : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+async function getWeekData(weekStartParam?: string) {
+  const start = weekStartParam 
+    ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
+    : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
   const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
 
   // Fetch work sessions for the week
@@ -166,7 +170,7 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
         </p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -245,7 +249,7 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                   {['VP', 'PP', 'I', 'U'].map(eventType => {
                     const events = behavioralEvents.filter(e => e.eventType === eventType);
                     const totalPrompts = events.reduce((sum, e) => sum + (e.promptCount || 0), 0);
@@ -293,35 +297,45 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
             )}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-4">
-            <Link
-              href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
-              target="_blank"
-              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
-            >
-              📄 View Timesheet PDF
-            </Link>
-            <Link
-              href={`/api/generate-pdf/timesheet?week=${format(start, 'yyyy-MM-dd')}`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              download
-            >
-              ⬇️ Download Timesheet PDF
-            </Link>
-            <Link
-              href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
-              target="_blank"
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-            >
-              📊 View Behavioral Data Sheet
-            </Link>
-            <Link
-              href={`/api/generate-pdf/behavioral-sheet?month=${format(start, 'yyyy-MM')}`}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              download
-            >
-              ⬇️ Download Behavioral Data Sheet
-            </Link>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Timesheet</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Link
+                  href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
+                  target="_blank"
+                  className="px-4 py-2 bg-emerald-600 text-white text-center rounded-md hover:bg-emerald-700"
+                >
+                  📄 View
+                </Link>
+                <PDFDownloadLink
+                  href={`/api/generate-pdf/timesheet?week=${format(start, 'yyyy-MM-dd')}`}
+                  filename={`timesheet-${format(start, 'yyyy-MM-dd')}.pdf`}
+                  className="px-4 py-2 bg-blue-600 text-white text-center rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  ⬇️ Download PDF
+                </PDFDownloadLink>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Behavioral Data Sheet</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Link
+                  href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
+                  target="_blank"
+                  className="px-4 py-2 bg-purple-600 text-white text-center rounded-md hover:bg-purple-700"
+                >
+                  📊 View
+                </Link>
+                <PDFDownloadLink
+                  href={`/api/generate-pdf/behavioral-sheet?month=${format(start, 'yyyy-MM')}`}
+                  filename={`behavioral-data-${format(start, 'yyyy-MM')}.pdf`}
+                  className="px-4 py-2 bg-indigo-600 text-white text-center rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  ⬇️ Download PDF
+                </PDFDownloadLink>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -329,7 +343,15 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
   );
 }
 
-export default function SummaryPage() {
+interface PageProps {
+  searchParams: Promise<{
+    week?: string;
+  }>;
+}
+
+export default async function SummaryPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
@@ -342,8 +364,10 @@ export default function SummaryPage() {
           </p>
         </div>
 
+        <WeekNavigator />
+
         <Suspense fallback={<div className="bg-white rounded-lg shadow-md p-6">Loading...</div>}>
-          <WeekSummary />
+          <WeekSummary weekStart={params.week} />
         </Suspense>
 
         <div className="mt-6 flex gap-4">

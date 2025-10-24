@@ -16,6 +16,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for required env vars
+    if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID) {
+      console.error('Missing Airtable environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
     // Create work session in Airtable
     const records = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).create([
       {
@@ -32,8 +41,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sessionId: records[0].id });
   } catch (error) {
     console.error('Error creating manual session:', error);
+    
+    // Handle specific Airtable errors
+    if (error instanceof Error) {
+      if (error.message.includes('INVALID_PERMISSIONS')) {
+        return NextResponse.json(
+          { error: 'Permission denied. Check Airtable API key permissions.' },
+          { status: 403 }
+        );
+      }
+      if (error.message.includes('NOT_FOUND') || error.message.includes('INVALID_VALUE_FOR_COLUMN')) {
+        return NextResponse.json(
+          { error: 'Invalid user ID or table configuration.' },
+          { status: 400 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create session' },
+      { error: 'Failed to create session. Please try again.' },
       { status: 500 }
     );
   }

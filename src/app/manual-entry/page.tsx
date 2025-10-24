@@ -53,7 +53,11 @@ export default function ManualEntryPage() {
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
         
-        if (startMinutes >= endMinutes) {
+        if (startMinutes === endMinutes) {
+          throw new Error('Time blocks cannot have zero duration (start time = end time)');
+        }
+        
+        if (startMinutes > endMinutes) {
           throw new Error('End time must be after start time for all time blocks');
         }
         

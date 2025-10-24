@@ -14,6 +14,23 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
+  
+  // Validate date format and ensure it's a valid date
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(week)) {
+    return NextResponse.json(
+      { error: 'Invalid week format. Must be YYYY-MM-DD' },
+      { status: 400 }
+    );
+  }
+  
+  const weekDate = new Date(week);
+  if (isNaN(weekDate.getTime())) {
+    return NextResponse.json(
+      { error: 'Invalid date provided' },
+      { status: 400 }
+    );
+  }
 
   let browser;
   

@@ -10,13 +10,21 @@ interface PDFDownloadLinkProps {
   className?: string;
 }
 
+// Global flag to prevent concurrent PDF generation
+let isPDFGenerating = false;
+
 export function PDFDownloadLink({ href, filename, children, className }: PDFDownloadLinkProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    if (isGenerating) return;
+    if (isGenerating || isPDFGenerating) {
+      if (isPDFGenerating) {
+        toast.error('Another PDF is currently generating. Please wait.');
+      }
+      return;
+    }
     
     // Check if user is offline
     if (!navigator.onLine) {
@@ -25,6 +33,7 @@ export function PDFDownloadLink({ href, filename, children, className }: PDFDown
     }
     
     setIsGenerating(true);
+    isPDFGenerating = true;
     const toastId = toast.loading('Generating PDF... This may take 10-30 seconds');
     
     try {
@@ -53,6 +62,7 @@ export function PDFDownloadLink({ href, filename, children, className }: PDFDown
       );
     } finally {
       setIsGenerating(false);
+      isPDFGenerating = false;
     }
   };
 

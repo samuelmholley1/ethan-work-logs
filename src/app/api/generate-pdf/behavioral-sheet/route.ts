@@ -15,6 +15,24 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
+  
+  // Validate month format (YYYY-MM)
+  const monthRegex = /^\d{4}-\d{2}$/;
+  if (!monthRegex.test(month)) {
+    return NextResponse.json(
+      { error: 'Invalid month format. Must be YYYY-MM' },
+      { status: 400 }
+    );
+  }
+  
+  // Validate it's a valid month
+  const [year, monthNum] = month.split('-').map(Number);
+  if (monthNum < 1 || monthNum > 12) {
+    return NextResponse.json(
+      { error: 'Invalid month. Must be between 01 and 12' },
+      { status: 400 }
+    );
+  }
 
   let browser;
   

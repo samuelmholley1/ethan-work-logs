@@ -44,26 +44,61 @@ export default function ManualEntryPage() {
     setError(null);
 
     try {
-      // Validate time blocks
+      // Validate date range (max 1 year in past, no future dates)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      
+      if (data.date > today) {
+        throw new Error('Cannot create entries for future dates');
+      }
+      if (data.date < oneYearAgo) {
+        throw new Error('Cannot create entries more than 1 year in the past');
+      }
+      
+      // Validate at least one time block
+      if (data.timeBlocks.length === 0) {
+        throw new Error('At least one time block is required');
+      }
+      
+      // Validate time blocks and check for overlaps
+      const blockRanges: Array<{ start: number; end: number }> = [];
+      
       for (const block of data.timeBlocks) {
         if (!block.startTime || !block.endTime) continue;
         
         const [startHour, startMin] = block.startTime.split(':').map(Number);
         const [endHour, endMin] = block.endTime.split(':').map(Number);
-        const startMinutes = startHour * 60 + startMin;
-        const endMinutes = endHour * 60 + endMin;
+        let startMinutes = startHour * 60 + startMin;
+        let endMinutes = endHour * 60 + endMin;
+        
+        // Handle time blocks spanning midnight (e.g., 11pm - 1am)
+        // If end time < start time, assume it crosses midnight
+        if (endMinutes < startMinutes) {
+          endMinutes += 24 * 60; // Add 24 hours to end time
+        }
         
         if (startMinutes === endMinutes) {
           throw new Error('Time blocks cannot have zero duration (start time = end time)');
         }
         
-        if (startMinutes > endMinutes) {
-          throw new Error('End time must be after start time for all time blocks');
-        }
-        
-        if (endMinutes - startMinutes > 16 * 60) { // 16 hours
+        const duration = endMinutes - startMinutes;
+        if (duration > 16 * 60) { // 16 hours
           throw new Error('Time blocks cannot exceed 16 hours');
         }
+        
+        // Check for overlaps with existing blocks
+        for (const existing of blockRanges) {
+          const overlapStart = Math.max(startMinutes, existing.start);
+          const overlapEnd = Math.min(endMinutes, existing.end);
+          
+          if (overlapStart < overlapEnd) {
+            throw new Error('Time blocks cannot overlap. Please check your time entries.');
+          }
+        }
+        
+        blockRanges.push({ start: startMinutes, end: endMinutes });
       }
       
       // Validate userId format
@@ -83,7 +118,8 @@ export default function ManualEntryPage() {
       });
 
       if (!sessionResponse.ok) {
-        throw new Error('Failed to create work session');
+        const errorData = await sessionResponse.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to create work session');
       }
 
       const { sessionId } = await sessionResponse.json();
@@ -100,8 +136,13 @@ export default function ManualEntryPage() {
         const endDateTime = new Date(data.date);
         const [endHour, endMin] = block.endTime.split(':');
         endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+        
+        // Handle midnight crossover - if end time is before start time, add a day
+        if (endDateTime < startDateTime) {
+          endDateTime.setDate(endDateTime.getDate() + 1);
+        }
 
-        await fetch('/api/time-blocks/manual', {
+        const blockResponse = await fetch('/api/time-blocks/manual', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -110,6 +151,11 @@ export default function ManualEntryPage() {
             endTime: endDateTime.toISOString(),
           }),
         });
+        
+        if (!blockResponse.ok) {
+          const errorData = await blockResponse.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || 'Failed to create time block');
+        }
       }
 
       // Success! Redirect to summary

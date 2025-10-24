@@ -12,12 +12,30 @@ export default function Home() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-emerald-200">
         <div className="max-w-4xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-emerald-900">
-            Ethan Work Logger
-          </h1>
-          <p className="text-sm text-emerald-700">
-            Time & Behavioral Data Tracking
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-emerald-900">
+                Ethan Work Logger
+              </h1>
+              <p className="text-sm text-emerald-700">
+                Time & Behavioral Data Tracking
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href="/summary"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+              >
+                📊 Summary
+              </a>
+              <a
+                href="/manual-entry"
+                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
+              >
+                + Manual Entry
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

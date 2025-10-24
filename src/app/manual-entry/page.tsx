@@ -44,6 +44,29 @@ export default function ManualEntryPage() {
     setError(null);
 
     try {
+      // Validate time blocks
+      for (const block of data.timeBlocks) {
+        if (!block.startTime || !block.endTime) continue;
+        
+        const [startHour, startMin] = block.startTime.split(':').map(Number);
+        const [endHour, endMin] = block.endTime.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+        
+        if (startMinutes >= endMinutes) {
+          throw new Error('End time must be after start time for all time blocks');
+        }
+        
+        if (endMinutes - startMinutes > 16 * 60) { // 16 hours
+          throw new Error('Time blocks cannot exceed 16 hours');
+        }
+      }
+      
+      // Validate userId format
+      if (!data.userId.startsWith('rec')) {
+        throw new Error('User ID must be a valid Airtable record ID (starts with "rec")');
+      }
+      
       // First, create the work session
       const sessionResponse = await fetch('/api/sessions/manual', {
         method: 'POST',

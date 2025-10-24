@@ -156,33 +156,41 @@ export default function TimesheetTemplate({ data }: { data: TimesheetData }) {
             </tr>
           </thead>
           <tbody>
-            {data.dailySummaries.map((day, dayIdx) =>
-              day.sessions.map((session, sessionIdx) =>
-                session.roundedBlocks.map((block, blockIdx) => (
-                  <tr key={`${dayIdx}-${sessionIdx}-${blockIdx}`}>
-                    {sessionIdx === 0 && blockIdx === 0 && (
-                      <td
-                        rowSpan={day.sessions.reduce(
-                          (sum, s) => sum + s.roundedBlocks.length,
-                          0
-                        )}
-                      >
-                        {format(new Date(day.date), 'EEE, MMM d')}
-                      </td>
-                    )}
-                    {blockIdx === 0 && (
-                      <td rowSpan={session.roundedBlocks.length}>
-                        {session.serviceType}
-                      </td>
-                    )}
-                    <td>{formatTime(block.roundedStartTime)}</td>
-                    <td>{formatTime(block.roundedEndTime)}</td>
-                    <td>{formatDuration(block.duration)}</td>
-                    {blockIdx === 0 && (
-                      <td rowSpan={session.roundedBlocks.length}></td>
-                    )}
-                  </tr>
-                ))
+            {data.dailySummaries.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  No work sessions recorded for this week.
+                </td>
+              </tr>
+            ) : (
+              data.dailySummaries.map((day, dayIdx) =>
+                day.sessions.map((session, sessionIdx) =>
+                  session.roundedBlocks.map((block, blockIdx) => (
+                    <tr key={`${dayIdx}-${sessionIdx}-${blockIdx}`}>
+                      {sessionIdx === 0 && blockIdx === 0 && (
+                        <td
+                          rowSpan={day.sessions.reduce(
+                            (sum, s) => sum + s.roundedBlocks.length,
+                            0
+                          )}
+                        >
+                          {format(new Date(day.date), 'EEE, MMM d')}
+                        </td>
+                      )}
+                      {blockIdx === 0 && (
+                        <td rowSpan={session.roundedBlocks.length}>
+                          {session.serviceType}
+                        </td>
+                      )}
+                      <td>{formatTime(block.roundedStartTime)}</td>
+                      <td>{formatTime(block.roundedEndTime)}</td>
+                      <td>{formatDuration(block.duration)}</td>
+                      {blockIdx === 0 && (
+                        <td rowSpan={session.roundedBlocks.length}></td>
+                      )}
+                    </tr>
+                  ))
+                )
               )
             )}
             <tr className="total-row">

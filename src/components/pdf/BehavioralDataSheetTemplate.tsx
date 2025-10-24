@@ -236,28 +236,36 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
             </tr>
           </thead>
           <tbody>
-            {data.outcomes.map((outcome, idx) => (
-              <tr key={outcome.id}>
-                <td className="outcome-cell">
-                  <div style={{ fontWeight: 'bold' }}>{outcome.title}</div>
-                  {outcome.description && (
-                    <div style={{ fontSize: '7pt', color: '#555', marginTop: '2px' }}>
-                      {outcome.description}
-                    </div>
-                  )}
+            {data.outcomes.length === 0 ? (
+              <tr>
+                <td colSpan={daysInMonth + 1} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  No outcomes configured. Please add outcomes in Airtable.
                 </td>
-                {Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                  const day = dayIdx + 1;
-                  const content = formatCellContent(outcome.id, day);
-                  
-                  return (
-                    <td key={day} className="data-cell">
-                      {content}
-                    </td>
-                  );
-                })}
               </tr>
-            ))}
+            ) : (
+              data.outcomes.map((outcome, idx) => (
+                <tr key={outcome.id}>
+                  <td className="outcome-cell">
+                    <div style={{ fontWeight: 'bold' }}>{outcome.title}</div>
+                    {outcome.description && (
+                      <div style={{ fontSize: '7pt', color: '#555', marginTop: '2px' }}>
+                        {outcome.description}
+                      </div>
+                    )}
+                  </td>
+                  {Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                    const day = dayIdx + 1;
+                    const content = formatCellContent(outcome.id, day);
+                    
+                    return (
+                      <td key={day} className="data-cell">
+                        {content}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 

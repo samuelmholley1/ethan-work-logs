@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
 
     // Build the URL to the hidden template page
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) || 
+                    request.nextUrl.origin ||
                     'http://localhost:3000';
     
     const templateUrl = `${baseUrl}/pdf-templates/timesheet/${week}`;

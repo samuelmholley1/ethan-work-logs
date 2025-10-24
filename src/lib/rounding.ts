@@ -82,25 +82,42 @@ function calculateDuration(start: Date, end: Date): number {
  * being favorable to the caregiver (no lost time)
  */
 export function apply15MinuteRounding(timeBlocks: TimeBlock[]): RoundedTimeBlock[] {
-  return timeBlocks
-    .filter(block => block.endTime) // Only process completed blocks
-    .map(block => {
-      const startTime = new Date(block.startTime);
-      const endTime = new Date(block.endTime!);
-      
-      const roundedStartTime = roundDownTo15Minutes(startTime);
-      const roundedEndTime = roundUpTo15Minutes(endTime);
-      
-      return {
-        id: block.id,
-        originalStartTime: startTime,
-        originalEndTime: endTime,
-        roundedStartTime,
-        roundedEndTime,
-        duration: calculateDuration(roundedStartTime, roundedEndTime),
-        sessionId: block.sessionId,
-      };
+  const results: RoundedTimeBlock[] = [];
+  
+  for (const block of timeBlocks) {
+    // Only process completed blocks
+    if (!block.endTime) continue;
+    
+    const startTime = new Date(block.startTime);
+    const endTime = new Date(block.endTime);
+    
+    // Validate dates
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      console.error('Invalid date in time block:', block);
+      continue;
+    }
+    
+    // Handle negative duration (data error)
+    if (endTime <= startTime) {
+      console.warn('Invalid time block: end time before start time', block);
+      continue;
+    }
+    
+    const roundedStartTime = roundDownTo15Minutes(startTime);
+    const roundedEndTime = roundUpTo15Minutes(endTime);
+    
+    results.push({
+      id: block.id,
+      originalStartTime: startTime,
+      originalEndTime: endTime,
+      roundedStartTime,
+      roundedEndTime,
+      duration: calculateDuration(roundedStartTime, roundedEndTime),
+      sessionId: block.sessionId,
     });
+  }
+  
+  return results;
 }
 
 /**

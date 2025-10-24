@@ -244,31 +244,52 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
                 No behavioral events recorded for this week.
               </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {['VP', 'PP', 'I', 'U'].map(eventType => {
-                  const events = behavioralEvents.filter(e => e.eventType === eventType);
-                  const totalPrompts = events.reduce((sum, e) => sum + (e.promptCount || 0), 0);
-                  
-                  return (
-                    <div key={eventType} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="text-2xl font-bold text-emerald-600 mb-1">
-                        {eventType}
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {['VP', 'PP', 'I', 'U'].map(eventType => {
+                    const events = behavioralEvents.filter(e => e.eventType === eventType);
+                    const totalPrompts = events.reduce((sum, e) => sum + (e.promptCount || 0), 0);
+                    
+                    return (
+                      <div key={eventType} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="text-2xl font-bold text-emerald-600 mb-1">
+                          {eventType}
+                        </div>
+                        <div className="text-3xl font-bold text-gray-900 mb-2">
+                          {events.length}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {totalPrompts > 0 && (
+                            <span className="font-medium">
+                              {totalPrompts} prompts
+                            </span>
+                          )}
+                          {events.length === 1 ? ' event' : ' events'}
+                        </div>
                       </div>
-                      <div className="text-3xl font-bold text-gray-900 mb-2">
-                        {events.length}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {totalPrompts > 0 && (
-                          <span className="font-medium">
-                            {totalPrompts} prompts
-                          </span>
-                        )}
-                        {events.length === 1 ? ' event' : ' events'}
-                      </div>
-                    </div>
+                    );
+                  })}
+                </div>
+                
+                {(() => {
+                  const unknownEvents = behavioralEvents.filter(
+                    e => !['VP', 'PP', 'I', 'U'].includes(e.eventType)
                   );
-                })}
-              </div>
+                  if (unknownEvents.length > 0) {
+                    const typeSet = new Set<string>();
+                    unknownEvents.forEach(e => typeSet.add(e.eventType));
+                    const unknownTypes = Array.from(typeSet);
+                    return (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ Warning: Found {unknownEvents.length} event(s) with unknown type(s): {unknownTypes.join(', ')}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
             )}
           </div>
 

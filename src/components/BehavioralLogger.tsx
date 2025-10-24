@@ -417,8 +417,12 @@ export default function BehavioralLogger() {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add notes about this event..."
+              maxLength={500}
               className="w-full h-32 px-4 py-3 border-2 border-gray-300 rounded-xl resize-none focus:border-emerald-500 focus:outline-none"
             />
+            <div className="text-xs text-gray-500 mt-1 text-right">
+              {comment.length}/500 characters
+            </div>
 
             <div className="flex gap-4 mt-4">
               <button

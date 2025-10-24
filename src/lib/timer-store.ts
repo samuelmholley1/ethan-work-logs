@@ -70,9 +70,9 @@ export const useTimerStore = create<TimerState>()(
       clockIn: async (serviceType: ServiceType, userId: string) => {
         const state = get()
         
-        // Prevent double clock-in
+        // Prevent double clock-in (check again in case of race condition)
         if (state.activeSessionId) {
-          console.warn('Already clocked in')
+          console.warn('Already clocked in - race condition prevented')
           throw new Error('Already clocked in. Please clock out first.')
         }
 
@@ -264,6 +264,17 @@ export const useTimerStore = create<TimerState>()(
           return
         }
 
+        // Sanitize comment to prevent XSS
+        const sanitizedComment = comment
+          ? comment
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#x27;')
+              .replace(/\//g, '&#x2F;')
+              .substring(0, 500) // Enforce max length
+          : undefined
+
         const eventId = uuidv4()
         const now = new Date()
 
@@ -275,7 +286,7 @@ export const useTimerStore = create<TimerState>()(
             timestamp: now.toISOString(),
             eventType: eventType,
             promptCount: promptCount,
-            comment: comment,
+            comment: sanitizedComment,
             syncStatus: 'pending',
           })
 

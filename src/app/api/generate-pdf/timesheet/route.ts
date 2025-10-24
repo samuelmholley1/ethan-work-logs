@@ -19,10 +19,21 @@ export async function GET(request: NextRequest) {
   
   try {
     // Launch headless browser
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    try {
+      browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    } catch (launchError) {
+      console.error('Failed to launch Chromium browser:', launchError);
+      return NextResponse.json(
+        { 
+          error: 'PDF generation service unavailable', 
+          details: 'Failed to initialize browser. Please try again in a few moments or contact support if the issue persists.' 
+        },
+        { status: 503 }
+      );
+    }
 
     const context = await browser.newContext();
     const page = await context.newPage();

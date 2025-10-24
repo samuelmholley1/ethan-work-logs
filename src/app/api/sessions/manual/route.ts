@@ -25,8 +25,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create work session in Airtable
-    const records = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).create([
+    // Create work session in Airtable with 30s timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout: Airtable is taking too long to respond')), 30000)
+    );
+    
+    const createPromise = base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).create([
       {
         fields: {
           Name: `${serviceType} - ${new Date(date).toLocaleDateString()}`,
@@ -37,6 +41,8 @@ export async function POST(request: NextRequest) {
         },
       },
     ]);
+    
+    const records = await Promise.race([createPromise, timeoutPromise]) as any[];
 
     return NextResponse.json({ sessionId: records[0].id });
   } catch (error) {
@@ -44,6 +50,12 @@ export async function POST(request: NextRequest) {
     
     // Handle specific Airtable errors
     if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        return NextResponse.json(
+          { error: 'Request timeout. Airtable is taking too long to respond. Please check your connection and try again.' },
+          { status: 504 }
+        );
+      }
       if (error.message.includes('INVALID_PERMISSIONS')) {
         return NextResponse.json(
           { error: 'Permission denied. Check Airtable API key permissions.' },

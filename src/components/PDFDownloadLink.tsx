@@ -18,6 +18,12 @@ export function PDFDownloadLink({ href, filename, children, className }: PDFDown
     
     if (isGenerating) return;
     
+    // Check if user is offline
+    if (!navigator.onLine) {
+      toast.error('PDF generation requires an internet connection. Please connect to the internet and try again.');
+      return;
+    }
+    
     setIsGenerating(true);
     const toastId = toast.loading('Generating PDF... This may take 10-30 seconds');
     

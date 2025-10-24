@@ -25,8 +25,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create time block in Airtable
-    const records = await base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).create([
+    // Create time block in Airtable with 30s timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout: Airtable is taking too long to respond')), 30000)
+    );
+    
+    const createPromise = base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).create([
       {
         fields: {
           Name: `${new Date(startTime).toLocaleTimeString()} - ${new Date(endTime).toLocaleTimeString()}`,
@@ -36,12 +40,20 @@ export async function POST(request: NextRequest) {
         },
       },
     ]);
+    
+    const records = await Promise.race([createPromise, timeoutPromise]) as any[];
 
     return NextResponse.json({ timeBlockId: records[0].id });
   } catch (error) {
     console.error('Error creating manual time block:', error);
     
     if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        return NextResponse.json(
+          { error: 'Request timeout. Airtable is taking too long to respond. Please check your connection and try again.' },
+          { status: 504 }
+        );
+      }
       if (error.message.includes('INVALID_PERMISSIONS')) {
         return NextResponse.json(
           { error: 'Permission denied. Check Airtable API key permissions.' },

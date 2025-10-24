@@ -178,8 +178,8 @@ export default function TimesheetTemplate({ data }: { data: TimesheetData }) {
                         </td>
                       )}
                       {blockIdx === 0 && (
-                        <td rowSpan={session.roundedBlocks.length}>
-                          {session.serviceType}
+                        <td rowSpan={session.roundedBlocks.length} title={session.serviceType}>
+                          {session.serviceType.length > 20 ? `${session.serviceType.substring(0, 20)}...` : session.serviceType}
                         </td>
                       )}
                       <td>{formatTime(block.roundedStartTime)}</td>

@@ -163,12 +163,18 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
             padding-left: 5px;
             font-size: 8pt;
             max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
           }
           
           .data-cell {
             font-size: 7pt;
             height: 25px;
             min-height: 25px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
           
           .footer {
@@ -254,10 +260,12 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
               data.outcomes.map((outcome, idx) => (
                 <tr key={outcome.id} className="outcome-row">
                   <td className="outcome-cell">
-                    <div style={{ fontWeight: 'bold' }}>{outcome.title}</div>
+                    <div style={{ fontWeight: 'bold' }} title={outcome.title}>
+                      {outcome.title.length > 40 ? `${outcome.title.substring(0, 40)}...` : outcome.title}
+                    </div>
                     {outcome.description && (
-                      <div style={{ fontSize: '7pt', color: '#555', marginTop: '2px' }}>
-                        {outcome.description}
+                      <div style={{ fontSize: '7pt', color: '#555', marginTop: '2px' }} title={outcome.description}>
+                        {outcome.description.length > 60 ? `${outcome.description.substring(0, 60)}...` : outcome.description}
                       </div>
                     )}
                   </td>

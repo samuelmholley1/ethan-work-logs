@@ -31,7 +31,7 @@ async function getBehavioralDataSheetData(month: Date, serviceType?: string) {
     sessionFilter = `AND(${sessionFilter}, {ServiceType} = '${serviceType}')`;
   }
 
-  const sessionRecords = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).select({
+  const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
     filterByFormula: sessionFilter,
   }).all();
 
@@ -41,7 +41,7 @@ async function getBehavioralDataSheetData(month: Date, serviceType?: string) {
   const events: any[] = [];
   
   if (sessionIds.length > 0) {
-    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORAL_EVENTS_TABLE_ID!).select({
+    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID!).select({
       filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
     }).all();
 

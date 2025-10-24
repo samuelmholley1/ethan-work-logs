@@ -20,7 +20,7 @@ async function getTimesheetData(weekStart: Date) {
   const end = endOfWeek(start, { weekStartsOn: 1 });
 
   // Fetch work sessions
-  const sessionRecords = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).select({
+  const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
     filterByFormula: `AND(
       IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
       IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
@@ -40,7 +40,7 @@ async function getTimesheetData(weekStart: Date) {
   const timeBlocks: any[] = [];
 
   if (sessionIds.length > 0) {
-    const timeBlockRecords = await base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).select({
+    const timeBlockRecords = await base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).select({
       filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
     }).all();
 

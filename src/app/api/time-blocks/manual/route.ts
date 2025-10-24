@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for required env vars
-    if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID) {
+    if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID) {
       console.error('Missing Airtable environment variables');
       return NextResponse.json(
         { error: 'Server configuration error. Please contact support.' },
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       setTimeout(() => reject(new Error('Request timeout: Airtable is taking too long to respond')), 30000)
     );
     
-    const createPromise = base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).create([
+    const createPromise = base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).create([
       {
         fields: {
           Name: `${new Date(startTime).toLocaleTimeString()} - ${new Date(endTime).toLocaleTimeString()}`,

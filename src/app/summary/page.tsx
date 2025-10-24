@@ -41,7 +41,7 @@ async function getWeekData(weekStartParam?: string) {
   const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
 
   // Fetch work sessions for the week
-  const sessionRecords = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).select({
+  const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
     filterByFormula: `AND(
       IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
       IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
@@ -62,7 +62,7 @@ async function getWeekData(weekStartParam?: string) {
 
   if (sessionIds.length > 0) {
     const filterFormula = `OR(${sessionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`;
-    const timeBlockRecords = await base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).select({
+    const timeBlockRecords = await base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).select({
       filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
     }).all();
 
@@ -79,9 +79,9 @@ async function getWeekData(weekStartParam?: string) {
 
   // Fetch behavioral events for these sessions
   const behavioralEvents: BehavioralEventData[] = [];
-  
+
   if (sessionIds.length > 0) {
-    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORAL_EVENTS_TABLE_ID!).select({
+    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID!).select({
       filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
     }).all();
 

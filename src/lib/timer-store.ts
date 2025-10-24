@@ -82,7 +82,7 @@ export const useTimerStore = create<TimerState>()(
         }
 
         // Validate service type
-        const validServiceTypes = ['Morning Services', 'Daytime Services', 'PM Services']
+        const validServiceTypes: ServiceType[] = ['CLS', 'Supported Employment']
         if (!validServiceTypes.includes(serviceType)) {
           throw new Error(`Invalid service type: ${serviceType}`)
         }

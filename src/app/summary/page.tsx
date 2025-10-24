@@ -1,0 +1,272 @@
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
+import Airtable from 'airtable';
+import { apply15MinuteRounding, formatDuration, calculateTotalDuration, type RoundedTimeBlock } from '@/lib/rounding';
+
+export const dynamic = 'force-dynamic';
+
+const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
+  process.env.AIRTABLE_BASE_ID!
+);
+
+interface WorkSessionData {
+  id: string;
+  date: string;
+  serviceType: string;
+  userId: string;
+}
+
+interface TimeBlockData {
+  id: string;
+  startTime: string;
+  endTime: string | null;
+  sessionId: string;
+}
+
+interface BehavioralEventData {
+  id: string;
+  eventType: string;
+  promptCount: number | null;
+  timestamp: string;
+  sessionId: string;
+}
+
+async function getWeekData(weekStart?: string) {
+  const start = weekStart ? new Date(weekStart) : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+  const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
+
+  // Fetch work sessions for the week
+  const sessionRecords = await base(process.env.AIRTABLE_WORK_SESSIONS_TABLE_ID!).select({
+    filterByFormula: `AND(
+      IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
+      IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
+    )`,
+    sort: [{ field: 'Date', direction: 'asc' }],
+  }).all();
+
+  const sessions: WorkSessionData[] = sessionRecords.map(record => ({
+    id: record.id,
+    date: record.get('Date') as string || record.get('Name') as string,
+    serviceType: record.get('ServiceType') as string || record.get('Name') as string,
+    userId: ((record.get('User') as string[]) || [])[0] || '',
+  }));
+
+  // Fetch all time blocks for these sessions
+  const sessionIds = sessions.map(s => s.id);
+  const timeBlocks: TimeBlockData[] = [];
+
+  if (sessionIds.length > 0) {
+    const filterFormula = `OR(${sessionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`;
+    const timeBlockRecords = await base(process.env.AIRTABLE_TIME_BLOCKS_TABLE_ID!).select({
+      filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
+    }).all();
+
+    for (const record of timeBlockRecords) {
+      const sessionLinks = record.get('WorkSession') as string[] || [];
+      timeBlocks.push({
+        id: record.id,
+        startTime: record.get('StartTime') as string || record.get('Name') as string,
+        endTime: record.get('EndTime') as string || null,
+        sessionId: sessionLinks[0] || '',
+      });
+    }
+  }
+
+  return { sessions, timeBlocks, weekStart: start };
+}
+
+async function WeekSummary({ weekStart }: { weekStart?: string }) {
+  const { sessions, timeBlocks, weekStart: start } = await getWeekData(weekStart);
+
+  // Group time blocks by session
+  const sessionMap = new Map<string, TimeBlockData[]>();
+  for (const block of timeBlocks) {
+    if (!sessionMap.has(block.sessionId)) {
+      sessionMap.set(block.sessionId, []);
+    }
+    sessionMap.get(block.sessionId)!.push(block);
+  }
+
+  // Build daily summaries
+  const dailySummaries: Array<{
+    date: string;
+    sessions: Array<{
+      serviceType: string;
+      roundedBlocks: RoundedTimeBlock[];
+      totalMinutes: number;
+    }>;
+  }> = [];
+
+  for (const session of sessions) {
+    const blocks = sessionMap.get(session.id) || [];
+    const roundedBlocks = apply15MinuteRounding(blocks.map(b => ({
+      id: b.id,
+      startTime: b.startTime,
+      endTime: b.endTime,
+      sessionId: b.sessionId,
+    })));
+
+    const totalMinutes = calculateTotalDuration(roundedBlocks);
+
+    // Find or create daily summary
+    let daySummary = dailySummaries.find(d => d.date === session.date);
+    if (!daySummary) {
+      daySummary = { date: session.date, sessions: [] };
+      dailySummaries.push(daySummary);
+    }
+
+    daySummary.sessions.push({
+      serviceType: session.serviceType,
+      roundedBlocks,
+      totalMinutes,
+    });
+  }
+
+  // Calculate weekly total
+  const weeklyTotal = dailySummaries.reduce(
+    (total, day) => total + day.sessions.reduce((dayTotal, s) => dayTotal + s.totalMinutes, 0),
+    0
+  );
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          Timesheet Summary
+        </h2>
+        <p className="text-sm text-gray-600">
+          Week of {format(start, 'MMM d, yyyy')}
+        </p>
+      </div>
+
+      {dailySummaries.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">
+          No work sessions found for this week.
+        </p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time In
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time Out
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Duration
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dailySummaries.map((day) =>
+                  day.sessions.map((session, sessionIdx) =>
+                    session.roundedBlocks.map((block, blockIdx) => (
+                      <tr key={`${day.date}-${sessionIdx}-${blockIdx}`}>
+                        {blockIdx === 0 && sessionIdx === 0 && (
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                            rowSpan={day.sessions.reduce((sum, s) => sum + s.roundedBlocks.length, 0)}
+                          >
+                            {format(new Date(day.date), 'EEE, MMM d')}
+                          </td>
+                        )}
+                        {blockIdx === 0 && (
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-700"
+                            rowSpan={session.roundedBlocks.length}
+                          >
+                            {session.serviceType}
+                          </td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {format(block.roundedStartTime, 'h:mm a')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {format(block.roundedEndTime, 'h:mm a')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {formatDuration(block.duration)}
+                        </td>
+                      </tr>
+                    ))
+                  )
+                )}
+                <tr className="bg-emerald-50">
+                  <td colSpan={4} className="px-6 py-4 text-right text-sm font-bold text-gray-900">
+                    Weekly Total:
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-700">
+                    {formatDuration(weeklyTotal)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 flex gap-4">
+            <Link
+              href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
+              target="_blank"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+            >
+              View PDF Template
+            </Link>
+            <Link
+              href={`/api/generate-pdf/timesheet?week=${format(start, 'yyyy-MM-dd')}`}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              download
+            >
+              Download PDF
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function SummaryPage() {
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Summary & Export
+          </h1>
+          <p className="text-gray-600">
+            View and export your timesheet and behavioral data.
+          </p>
+        </div>
+
+        <Suspense fallback={<div className="bg-white rounded-lg shadow-md p-6">Loading...</div>}>
+          <WeekSummary />
+        </Suspense>
+
+        <div className="mt-6 flex gap-4">
+          <Link
+            href="/manual-entry"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            + Add Manual Entry
+          </Link>
+          <Link
+            href="/"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            ← Back to Timer
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

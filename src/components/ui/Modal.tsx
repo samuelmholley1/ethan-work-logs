@@ -165,6 +165,13 @@ export default function Modal({
           }}
         >
           <div className="p-6">
+            {/* App Branding */}
+            <div className="flex justify-center mb-4">
+              <div className="text-2xl font-bold text-emerald-600">
+                ⏱️ Work Logger
+              </div>
+            </div>
+
             {/* Icon */}
             {getIcon()}
 

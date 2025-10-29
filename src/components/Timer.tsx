@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTimerStore } from '@/lib/timer-store'
 import { hasPendingData } from '@/lib/sync-queue'
+import Modal from '@/components/ui/Modal'
 
 /**
  * Timer Component
@@ -27,6 +28,7 @@ export default function Timer() {
   } = useTimerStore()
 
   const [showServiceModal, setShowServiceModal] = useState(false)
+  const [showClockOutModal, setShowClockOutModal] = useState(false)
   const [pendingSync, setPendingSync] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const [isBreak, setIsBreak] = useState(false)
@@ -130,16 +132,14 @@ export default function Timer() {
     }
   }
 
-  // Handle Clock Out button
-  const handleClockOut = async () => {
+  // Handle Clock Out button - show confirmation modal
+  const handleClockOutClick = () => {
     if (isLoading) return // Prevent double-clicks
-    
-    const hours = Math.floor(elapsedSeconds / 3600)
-    const minutes = Math.floor((elapsedSeconds % 3600) / 60)
-    const timeWorked = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-    
-    if (!confirm(`Clock out and end this work session?\n\nTime worked: ${timeWorked}\n\nThis action cannot be undone.`)) return
+    setShowClockOutModal(true)
+  }
 
+  // Confirmed clock out action
+  const handleClockOutConfirm = async () => {
     setIsLoading(true)
     try {
       await clockOut()
@@ -278,7 +278,7 @@ export default function Timer() {
 
             {/* Clock Out Button */}
             <button
-              onClick={handleClockOut}
+              onClick={handleClockOutClick}
               disabled={isLoading}
               className={`w-full px-6 py-4 rounded-xl font-bold text-lg transition-colors ${
                 isLoading
@@ -361,6 +361,22 @@ export default function Timer() {
           </div>
         </div>
       )}
+
+      {/* Clock Out Confirmation Modal */}
+      <Modal
+        isOpen={showClockOutModal}
+        onClose={() => setShowClockOutModal(false)}
+        onConfirm={handleClockOutConfirm}
+        type="confirm"
+        title="Clock Out Confirmation"
+        message={`Are you sure you want to clock out?\n\nTime worked: ${
+          Math.floor(elapsedSeconds / 3600) > 0
+            ? `${Math.floor(elapsedSeconds / 3600)}h ${Math.floor((elapsedSeconds % 3600) / 60)}m`
+            : `${Math.floor(elapsedSeconds / 60)}m`
+        }\n\nThis will end your current work session.`}
+        confirmText="Clock Out"
+        cancelText="Cancel"
+      />
     </div>
   )
 }

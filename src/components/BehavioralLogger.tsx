@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTimerStore } from '@/lib/timer-store'
 import { getOutcomes } from '@/lib/airtable'
 import type { Outcome } from '@/types/worklog'
+import OutcomeSearch from '@/components/ui/OutcomeSearch'
 
 /**
  * Behavioral Logger Component
@@ -283,17 +284,17 @@ export default function BehavioralLogger() {
             {loading ? 'Loading outcomes...' : 'No outcomes found. Please check your Airtable setup.'}
           </div>
         ) : (
-          <select
-            value={selectedOutcome || ''}
-            onChange={(e) => setSelectedOutcome(e.target.value)}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-900 font-medium focus:border-emerald-500 focus:outline-none"
-          >
-            {outcomes.map((outcome) => (
-              <option key={outcome.id} value={outcome.id}>
-                {outcome.title}
-              </option>
-            ))}
-          </select>
+          <OutcomeSearch
+            items={outcomes.map(o => ({
+              id: o.id,
+              title: o.title,
+              description: o.description
+            }))}
+            selectedId={selectedOutcome}
+            onSelect={setSelectedOutcome}
+            placeholder="Search outcomes... (type to filter)"
+            emptyMessage="No matching outcomes found"
+          />
         )}
       </div>
 

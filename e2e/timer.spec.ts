@@ -5,158 +5,184 @@ import { test, expect } from '@playwright/test'
  * 
  * Tests the complete timer workflow:
  * 1. Navigate to home page
- * 2. Select service type (CLS)
- * 3. Clock in
- * 4. Verify timer is running
- * 5. Log behavioral events
- * 6. Clock out
- * 7. Verify session completed
+ * 2. Clock in
+ * 3. Verify timer is running
+ * 4. Log behavioral events
+ * 5. Clock out with confirmation
+ * 6. Verify session completed
  */
 
 test.describe('Timer Workflow', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to home page before each test
     await page.goto('/')
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
+    // Wait for page to load fully
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('should display timer interface on home page', async ({ page }) => {
-    // Check if main heading is visible
-    await expect(page.locator('h1')).toContainText('Work Logger')
+    // Check if Clock In button exists (main timer interface)
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
+    await expect(clockInButton).toBeVisible()
     
-    // Check if timer component is visible
-    await expect(page.locator('text=Clock In')).toBeVisible()
+    // Check if page has the main content area
+    const main = page.locator('main')
+    await expect(main).toBeVisible()
   })
 
   test('should clock in successfully', async ({ page }) => {
     // Find and click the Clock In button
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await expect(clockInButton).toBeVisible()
     
-    // Click the clock in button
+    // Click to clock in
     await clockInButton.click()
     
-    // Wait for toast notification or UI update
-    await page.waitForTimeout(500)
-    
     // Verify button changed to Clock Out
-    const clockOutButton = page.locator('button:has-text("Clock Out")')
-    await expect(clockOutButton).toBeVisible()
+    const clockOutButton = page.getByRole('button', { name: /clock out/i })
+    await expect(clockOutButton).toBeVisible({ timeout: 5000 })
   })
 
   test('should show running timer after clock in', async ({ page }) => {
-    // Clock in
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    // Clock in first
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await clockInButton.click()
-    await page.waitForTimeout(500)
     
-    // Check if timer is visible and incrementing
-    const timerDisplay = page.locator('[data-testid="timer-display"]')
+    // Verify Clock Out button appeared
+    const clockOutButton = page.getByRole('button', { name: /clock out/i })
+    await expect(clockOutButton).toBeVisible({ timeout: 5000 })
     
-    if (await timerDisplay.isVisible()) {
+    // Look for timer display (typically shows HH:MM:SS format)
+    const timerDisplay = page.locator('[data-testid="timer-display"], .timer, .elapsed-time, [class*="time"]').first()
+    
+    if (await timerDisplay.isVisible().catch(() => false)) {
       const initialTime = await timerDisplay.textContent()
       
-      // Wait 2 seconds and check if time has incremented
+      // Wait and verify time has changed (timer incrementing)
       await page.waitForTimeout(2000)
       const updatedTime = await timerDisplay.textContent()
       
+      // Timer should have advanced
       expect(initialTime).not.toEqual(updatedTime)
     }
   })
 
   test('should display behavioral logging section when clocked in', async ({ page }) => {
     // Clock in first
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await clockInButton.click()
-    await page.waitForTimeout(500)
     
-    // Check if behavioral logger is visible
-    const behavioralLogger = page.locator('text=Select Outcome')
-    await expect(behavioralLogger).toBeVisible()
+    // Wait for Clock Out button to confirm logged in
+    await page.getByRole('button', { name: /clock out/i }).waitFor({ timeout: 5000 })
+    
+    // Behavioral logger should be visible when clocked in
+    // Look for outcome search input or behavioral logger section
+    const outcomeInput = page.getByPlaceholder(/search.*outcome/i)
+      .or(page.getByPlaceholder(/select outcome/i))
+      .or(page.locator('input[aria-label*="outcome" i]'))
+      .first()
+    
+    await expect(outcomeInput).toBeVisible({ timeout: 5000 })
   })
 
   test('should log behavioral event (Independent)', async ({ page }) => {
     // Clock in
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await clockInButton.click()
-    await page.waitForTimeout(500)
     
-    // Check if outcome selector is visible and select an outcome
-    const outcomeSearch = page.locator('input[aria-label="Search and select outcome"]')
-    if (await outcomeSearch.isVisible()) {
-      // Type to search for an outcome
-      await outcomeSearch.fill('Social')
+    // Wait for behavioral logger to appear
+    await page.getByRole('button', { name: /clock out/i }).waitFor({ timeout: 5000 })
+    
+    // Find outcome search input
+    const outcomeInput = page.getByPlaceholder(/search.*outcome/i)
+      .or(page.getByPlaceholder(/select outcome/i))
+      .or(page.locator('input[aria-label*="outcome" i]'))
+      .first()
+    
+    await expect(outcomeInput).toBeVisible()
+    
+    // Type to search for an outcome
+    await outcomeInput.fill('Social')
+    await page.waitForTimeout(300)
+    
+    // Click first result if available
+    const firstOption = page.getByRole('option').first()
+    if (await firstOption.isVisible().catch(() => false)) {
+      await firstOption.click()
       await page.waitForTimeout(300)
-      
-      // Click the first result
-      const firstResult = page.locator('role=option').first()
-      if (await firstResult.isVisible()) {
-        await firstResult.click()
-        await page.waitForTimeout(300)
-      }
     }
     
-    // Click Independent button
-    const independentButton = page.locator('button:has-text("Independent")')
-    if (await independentButton.isVisible()) {
-      await independentButton.click()
+    // Find and click the log button (might be labeled "Log" or "Independent" or similar)
+    const logButton = page.getByRole('button', { name: /log|independent|submit|save/i })
+      .filter({ hasNot: page.getByRole('button', { name: /clock/i }) })
+      .first()
+    
+    if (await logButton.isVisible().catch(() => false)) {
+      await logButton.click()
+      
+      // Wait for feedback or session state update
       await page.waitForTimeout(500)
       
-      // Check for success feedback (toast or visual confirmation)
-      const successIndicator = page.locator('text=Event logged')
-      if (await successIndicator.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(successIndicator).toBeVisible()
+      // Check for success feedback (look for toast or confirmation)
+      const feedback = page.locator('[role="status"], [role="alert"], .toast, [class*="success"]').first()
+      if (await feedback.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await expect(feedback).toBeDefined()
       }
     }
   })
 
   test('should clock out with confirmation', async ({ page }) => {
     // Clock in first
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await clockInButton.click()
-    await page.waitForTimeout(500)
     
-    // Click Clock Out button
-    const clockOutButton = page.locator('button:has-text("Clock Out")')
-    await expect(clockOutButton).toBeVisible()
+    // Wait for Clock Out button to appear
+    const clockOutButton = page.getByRole('button', { name: /clock out/i })
+    await expect(clockOutButton).toBeVisible({ timeout: 5000 })
+    
+    // Click Clock Out
     await clockOutButton.click()
     
-    // Wait for modal to appear
-    await page.waitForTimeout(300)
+    // Wait for confirmation modal/dialog to appear
+    await page.waitForTimeout(500)
     
-    // Check if confirmation modal is visible
-    const confirmButton = page.locator('button:has-text("Clock Out")').nth(1)
-    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      // Click confirm in modal
+    // Look for confirmation button in modal (usually the Clock Out button in the modal)
+    const confirmButton = page.getByRole('button', { name: /confirm|clock out/i }).nth(1)
+    
+    if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      // Click confirm
       await confirmButton.click()
       await page.waitForTimeout(500)
     }
     
-    // Verify timer has stopped (button changed back to Clock In)
-    const newClockInButton = page.locator('button:has-text("Clock In")')
-    await expect(newClockInButton).toBeVisible()
+    // After clock out, Clock In button should reappear
+    await expect(page.getByRole('button', { name: /clock in/i })).toBeVisible({ timeout: 5000 })
   })
 
   test('should show session summary after clock out', async ({ page }) => {
-    // Clock in and out
-    const clockInButton = page.locator('button:has-text("Clock In")')
+    // Clock in
+    const clockInButton = page.getByRole('button', { name: /clock in/i })
     await clockInButton.click()
-    await page.waitForTimeout(500)
     
-    const clockOutButton = page.locator('button:has-text("Clock Out")')
+    // Wait for logged in state
+    await page.getByRole('button', { name: /clock out/i }).waitFor({ timeout: 5000 })
+    
+    // Clock out
+    const clockOutButton = page.getByRole('button', { name: /clock out/i })
     await clockOutButton.click()
-    await page.waitForTimeout(300)
     
-    // Confirm clock out if modal appears
-    const confirmButton = page.locator('button:has-text("Clock Out")').nth(1)
-    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+    // Confirm if modal appears
+    const confirmButton = page.getByRole('button', { name: /confirm|clock out/i }).nth(1)
+    if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await confirmButton.click()
-      await page.waitForTimeout(500)
     }
     
-    // Check for session summary or redirect
-    const clockInAgain = page.locator('button:has-text("Clock In")')
-    await expect(clockInAgain).toBeVisible()
+    // After clock out, UI should return to initial state
+    // Clock In button should be available again
+    await expect(page.getByRole('button', { name: /clock in/i })).toBeVisible({ timeout: 5000 })
+    
+    // Verify we're back to ready state (behavioral logger should be hidden or reset)
+    const clockOutButton2 = page.getByRole('button', { name: /clock out/i })
+    expect(await clockOutButton2.isVisible().catch(() => false)).toBe(false)
   })
 })

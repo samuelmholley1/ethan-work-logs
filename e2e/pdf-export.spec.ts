@@ -2,12 +2,17 @@ import { test, expect } from '@playwright/test'
 
 /**
  * E2E Tests - PDF Export
- * 
+ *
  * Tests PDF generation and download functionality:
  * 1. Complete a work session
  * 2. Navigate to summary/export
  * 3. Trigger PDF generation
  * 4. Verify download starts
+ *
+ * Red Team Improvements:
+ * - Proper download verification
+ * - Better error handling for missing features
+ * - Proper timing for async operations
  */
 
 test.describe('PDF Export', () => {

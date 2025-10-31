@@ -54,3 +54,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Test scripts with secrets
+*.js
+!next.config.js
+!postcss.config.js
+!tailwind.config.js

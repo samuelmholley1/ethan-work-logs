@@ -8,9 +8,11 @@ import { WeekNavigator } from '@/components/WeekNavigator';
 
 export const dynamic = 'force-dynamic';
 
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
-  process.env.AIRTABLE_BASE_ID!
-);
+function getAirtableBase() {
+  return new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
+    process.env.AIRTABLE_BASE_ID!
+  );
+}
 
 interface WorkSessionData {
   id: string;
@@ -35,6 +37,7 @@ interface BehavioralEventData {
 }
 
 async function getWeekData(weekStartParam?: string) {
+  const base = getAirtableBase();
   const start = weekStartParam 
     ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
     : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday

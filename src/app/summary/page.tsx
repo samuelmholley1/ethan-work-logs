@@ -47,14 +47,21 @@ async function getWeekData(weekStartParam?: string) {
       : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
     const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
 
+    const startDate = format(start, 'yyyy-MM-dd');
+    const endDate = format(addDays(end, 1), 'yyyy-MM-dd');
+    
+    console.log('[Summary] Fetching sessions for week:', startDate, 'to', endDate);
+
     // Fetch work sessions for the week
     const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
       filterByFormula: `AND(
-        IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
-        IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
+        IS_AFTER({Date}, '${startDate}'),
+        IS_BEFORE({Date}, '${endDate}')
       )`,
       sort: [{ field: 'Date', direction: 'asc' }],
     }).all();
+
+    console.log('[Summary] Found', sessionRecords.length, 'sessions');
 
     const sessions: WorkSessionData[] = sessionRecords.map(record => ({
       id: record.id,

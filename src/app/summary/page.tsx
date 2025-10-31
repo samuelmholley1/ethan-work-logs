@@ -40,70 +40,79 @@ interface BehavioralEventData {
 }
 
 async function getWeekData(weekStartParam?: string) {
-  const base = getAirtableBase();
-  const start = weekStartParam 
-    ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
-    : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
-  const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
+  try {
+    const base = getAirtableBase();
+    const start = weekStartParam 
+      ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
+      : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+    const end = endOfWeek(start, { weekStartsOn: 1 }); // Sunday
 
-  // Fetch work sessions for the week
-  const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
-    filterByFormula: `AND(
-      IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
-      IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
-    )`,
-    sort: [{ field: 'Date', direction: 'asc' }],
-  }).all();
-
-  const sessions: WorkSessionData[] = sessionRecords.map(record => ({
-    id: record.id,
-    date: record.get('Date') as string || record.get('Name') as string,
-    serviceType: record.get('ServiceType') as string || record.get('Name') as string,
-    userId: ((record.get('User') as string[]) || [])[0] || '',
-  }));
-
-  // Fetch all time blocks for these sessions
-  const sessionIds = sessions.map(s => s.id);
-  const timeBlocks: TimeBlockData[] = [];
-
-  if (sessionIds.length > 0) {
-    const filterFormula = `OR(${sessionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`;
-    const timeBlockRecords = await base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).select({
-      filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
+    // Fetch work sessions for the week
+    const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
+      filterByFormula: `AND(
+        IS_AFTER({Date}, '${format(start, 'yyyy-MM-dd')}'),
+        IS_BEFORE({Date}, '${format(addDays(end, 1), 'yyyy-MM-dd')}')
+      )`,
+      sort: [{ field: 'Date', direction: 'asc' }],
     }).all();
 
-    for (const record of timeBlockRecords) {
-      const sessionLinks = record.get('WorkSession') as string[] || [];
-      timeBlocks.push({
-        id: record.id,
-        startTime: record.get('StartTime') as string || record.get('Name') as string,
-        endTime: record.get('EndTime') as string || null,
-        sessionId: sessionLinks[0] || '',
-      });
+    const sessions: WorkSessionData[] = sessionRecords.map(record => ({
+      id: record.id,
+      date: record.get('Date') as string || record.get('Name') as string,
+      serviceType: record.get('ServiceType') as string || record.get('Name') as string,
+      userId: ((record.get('User') as string[]) || [])[0] || '',
+    }));
+
+    // Fetch all time blocks for these sessions
+    const sessionIds = sessions.map(s => s.id);
+    const timeBlocks: TimeBlockData[] = [];
+
+    if (sessionIds.length > 0) {
+      const filterFormula = `OR(${sessionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`;
+      const timeBlockRecords = await base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).select({
+        filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
+      }).all();
+
+      for (const record of timeBlockRecords) {
+        const sessionLinks = record.get('WorkSession') as string[] || [];
+        timeBlocks.push({
+          id: record.id,
+          startTime: record.get('StartTime') as string || record.get('Name') as string,
+          endTime: record.get('EndTime') as string || null,
+          sessionId: sessionLinks[0] || '',
+        });
+      }
     }
-  }
 
-  // Fetch behavioral events for these sessions
-  const behavioralEvents: BehavioralEventData[] = [];
+    // Fetch behavioral events for these sessions
+    const behavioralEvents: BehavioralEventData[] = [];
 
-  if (sessionIds.length > 0) {
-    const eventRecords = await base(process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID!).select({
-      filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
-    }).all();
+    if (sessionIds.length > 0) {
+      const eventRecords = await base(process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID!).select({
+        filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
+      }).all();
 
-    for (const record of eventRecords) {
-      const sessionLinks = record.get('WorkSession') as string[] || [];
-      behavioralEvents.push({
-        id: record.id,
-        eventType: record.get('EventType') as string || record.get('Name') as string,
-        promptCount: record.get('PromptCount') as number || null,
-        timestamp: record.get('Timestamp') as string || record.get('Name') as string,
-        sessionId: sessionLinks[0] || '',
-      });
+      for (const record of eventRecords) {
+        const sessionLinks = record.get('WorkSession') as string[] || [];
+        behavioralEvents.push({
+          id: record.id,
+          eventType: record.get('EventType') as string || record.get('Name') as string,
+          promptCount: record.get('PromptCount') as number || null,
+          timestamp: record.get('Timestamp') as string || record.get('Name') as string,
+          sessionId: sessionLinks[0] || '',
+        });
+      }
     }
-  }
 
-  return { sessions, timeBlocks, behavioralEvents, weekStart: start };
+    return { sessions, timeBlocks, behavioralEvents, weekStart: start };
+  } catch (error) {
+    console.error('Error fetching Airtable data:', error);
+    // Return empty data instead of throwing
+    const start = weekStartParam 
+      ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
+      : startOfWeek(new Date(), { weekStartsOn: 1 });
+    return { sessions: [], timeBlocks: [], behavioralEvents: [], weekStart: start };
+  }
 }
 
 async function WeekSummary({ weekStart }: { weekStart?: string }) {

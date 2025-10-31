@@ -75,7 +75,7 @@ async function getWeekData(weekStartParam?: string) {
       id: record.id,
       date: record.fields.Date || record.fields.Name,
       serviceType: record.fields.ServiceType || record.fields.Name,
-      userId: (record.fields.User || [])[0] || '',
+      userId: (record.fields.Users || [])[0] || '', // Fixed: Users (plural) not User
     }));
 
     // Fetch all time blocks for these sessions
@@ -133,11 +133,15 @@ async function getWeekData(weekStartParam?: string) {
 
         for (const record of eventRecords) {
           const sessionLinks = record.fields.WorkSessions || [];
+          // Parse event type from Name field (e.g., "Event 5" -> extract from Notes or use Name)
+          const eventName = record.fields.Name || '';
+          const notes = record.fields.Notes || '';
+          
           behavioralEvents.push({
             id: record.id,
-            eventType: record.fields.EventType || record.fields.Name,
-            promptCount: record.fields.PromptCount || null,
-            timestamp: record.fields.Timestamp || record.fields.Name,
+            eventType: eventName, // Using Name since EventType field doesn't exist
+            promptCount: null, // PromptCount field doesn't exist in schema
+            timestamp: record.fields.Timestamp || eventName,
             sessionId: sessionLinks[0] || '',
           });
         }

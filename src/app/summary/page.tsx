@@ -83,7 +83,7 @@ async function getWeekData(weekStartParam?: string) {
     const timeBlocks: TimeBlockData[] = [];
 
     if (sessionIds.length > 0) {
-      const tbFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`;
+      const tbFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSessions}))`).join(', ')})`;
       const tbUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}?filterByFormula=${encodeURIComponent(tbFilterFormula)}`;
       
       const tbResponse = await fetch(tbUrl, {
@@ -97,8 +97,10 @@ async function getWeekData(weekStartParam?: string) {
         const tbData = await tbResponse.json();
         const timeBlockRecords = tbData.records || [];
 
+        console.log('[Summary] Found', timeBlockRecords.length, 'time blocks');
+
         for (const record of timeBlockRecords) {
-          const sessionLinks = record.fields.WorkSession || [];
+          const sessionLinks = record.fields.WorkSessions || [];
           timeBlocks.push({
             id: record.id,
             startTime: record.fields.StartTime || record.fields.Name,
@@ -113,7 +115,7 @@ async function getWeekData(weekStartParam?: string) {
     const behavioralEvents: BehavioralEventData[] = [];
 
     if (sessionIds.length > 0) {
-      const evFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`;
+      const evFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSessions}))`).join(', ')})`;
       const evUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID}?filterByFormula=${encodeURIComponent(evFilterFormula)}`;
       
       const evResponse = await fetch(evUrl, {
@@ -127,8 +129,10 @@ async function getWeekData(weekStartParam?: string) {
         const evData = await evResponse.json();
         const eventRecords = evData.records || [];
 
+        console.log('[Summary] Found', eventRecords.length, 'behavioral events');
+
         for (const record of eventRecords) {
-          const sessionLinks = record.fields.WorkSession || [];
+          const sessionLinks = record.fields.WorkSessions || [];
           behavioralEvents.push({
             id: record.id,
             eventType: record.fields.EventType || record.fields.Name,

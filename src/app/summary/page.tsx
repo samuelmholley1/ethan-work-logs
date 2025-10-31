@@ -9,8 +9,11 @@ import { WeekNavigator } from '@/components/WeekNavigator';
 export const dynamic = 'force-dynamic';
 
 function getAirtableBase() {
+  if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID) {
+    throw new Error('Missing Airtable environment variables');
+  }
   return new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
-    process.env.AIRTABLE_BASE_ID!
+    process.env.AIRTABLE_BASE_ID
   );
 }
 

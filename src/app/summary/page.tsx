@@ -41,7 +41,6 @@ interface BehavioralEventData {
 
 async function getWeekData(weekStartParam?: string) {
   try {
-    const base = getAirtableBase();
     const start = weekStartParam 
       ? startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 })
       : startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
@@ -52,22 +51,31 @@ async function getWeekData(weekStartParam?: string) {
     
     console.log('[Summary] Fetching sessions for week:', startDate, 'to', endDate);
 
-    // Fetch work sessions for the week
-    const sessionRecords = await base(process.env.AIRTABLE_WORKSESSIONS_TABLE_ID!).select({
-      filterByFormula: `AND(
-        IS_AFTER({Date}, '${startDate}'),
-        IS_BEFORE({Date}, '${endDate}')
-      )`,
-      sort: [{ field: 'Date', direction: 'asc' }],
-    }).all();
+    // Use fetch instead of Airtable SDK for better debugging
+    const filterFormula = `AND(IS_AFTER({Date}, '${startDate}'), IS_BEFORE({Date}, '${endDate}'))`;
+    const url = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_WORKSESSIONS_TABLE_ID}?filterByFormula=${encodeURIComponent(filterFormula)}&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=asc`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const sessionRecords = data.records || [];
 
     console.log('[Summary] Found', sessionRecords.length, 'sessions');
 
-    const sessions: WorkSessionData[] = sessionRecords.map(record => ({
+    const sessions: WorkSessionData[] = sessionRecords.map((record: any) => ({
       id: record.id,
-      date: record.get('Date') as string || record.get('Name') as string,
-      serviceType: record.get('ServiceType') as string || record.get('Name') as string,
-      userId: ((record.get('User') as string[]) || [])[0] || '',
+      date: record.fields.Date || record.fields.Name,
+      serviceType: record.fields.ServiceType || record.fields.Name,
+      userId: (record.fields.User || [])[0] || '',
     }));
 
     // Fetch all time blocks for these sessions
@@ -75,19 +83,29 @@ async function getWeekData(weekStartParam?: string) {
     const timeBlocks: TimeBlockData[] = [];
 
     if (sessionIds.length > 0) {
-      const filterFormula = `OR(${sessionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`;
-      const timeBlockRecords = await base(process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID!).select({
-        filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
-      }).all();
+      const tbFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`;
+      const tbUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}?filterByFormula=${encodeURIComponent(tbFilterFormula)}`;
+      
+      const tbResponse = await fetch(tbUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      for (const record of timeBlockRecords) {
-        const sessionLinks = record.get('WorkSession') as string[] || [];
-        timeBlocks.push({
-          id: record.id,
-          startTime: record.get('StartTime') as string || record.get('Name') as string,
-          endTime: record.get('EndTime') as string || null,
-          sessionId: sessionLinks[0] || '',
-        });
+      if (tbResponse.ok) {
+        const tbData = await tbResponse.json();
+        const timeBlockRecords = tbData.records || [];
+
+        for (const record of timeBlockRecords) {
+          const sessionLinks = record.fields.WorkSession || [];
+          timeBlocks.push({
+            id: record.id,
+            startTime: record.fields.StartTime || record.fields.Name,
+            endTime: record.fields.EndTime || null,
+            sessionId: sessionLinks[0] || '',
+          });
+        }
       }
     }
 
@@ -95,19 +113,30 @@ async function getWeekData(weekStartParam?: string) {
     const behavioralEvents: BehavioralEventData[] = [];
 
     if (sessionIds.length > 0) {
-      const eventRecords = await base(process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID!).select({
-        filterByFormula: `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`,
-      }).all();
+      const evFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSession}))`).join(', ')})`;
+      const evUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID}?filterByFormula=${encodeURIComponent(evFilterFormula)}`;
+      
+      const evResponse = await fetch(evUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      for (const record of eventRecords) {
-        const sessionLinks = record.get('WorkSession') as string[] || [];
-        behavioralEvents.push({
-          id: record.id,
-          eventType: record.get('EventType') as string || record.get('Name') as string,
-          promptCount: record.get('PromptCount') as number || null,
-          timestamp: record.get('Timestamp') as string || record.get('Name') as string,
-          sessionId: sessionLinks[0] || '',
-        });
+      if (evResponse.ok) {
+        const evData = await evResponse.json();
+        const eventRecords = evData.records || [];
+
+        for (const record of eventRecords) {
+          const sessionLinks = record.fields.WorkSession || [];
+          behavioralEvents.push({
+            id: record.id,
+            eventType: record.fields.EventType || record.fields.Name,
+            promptCount: record.fields.PromptCount || null,
+            timestamp: record.fields.Timestamp || record.fields.Name,
+            sessionId: sessionLinks[0] || '',
+          });
+        }
       }
     }
 

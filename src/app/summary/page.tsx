@@ -83,8 +83,8 @@ async function getWeekData(weekStartParam?: string) {
     const timeBlocks: TimeBlockData[] = [];
 
     if (sessionIds.length > 0) {
-      const tbFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSessions}))`).join(', ')})`;
-      const tbUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}?filterByFormula=${encodeURIComponent(tbFilterFormula)}`;
+      // Fetch ALL time blocks and filter in code since Airtable formula isn't working
+      const tbUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}`;
       
       const tbResponse = await fetch(tbUrl, {
         headers: {
@@ -95,11 +95,17 @@ async function getWeekData(weekStartParam?: string) {
 
       if (tbResponse.ok) {
         const tbData = await tbResponse.json();
-        const timeBlockRecords = tbData.records || [];
+        const allTimeBlocks = tbData.records || [];
 
-        console.log('[Summary] Found', timeBlockRecords.length, 'time blocks');
+        // Filter in code instead of using Airtable formula
+        const matchingBlocks = allTimeBlocks.filter((record: any) => {
+          const sessionLinks = record.fields.WorkSessions || [];
+          return sessionIds.some(sid => sessionLinks.includes(sid));
+        });
 
-        for (const record of timeBlockRecords) {
+        console.log('[Summary] Found', matchingBlocks.length, 'time blocks (filtered from', allTimeBlocks.length, 'total)');
+
+        for (const record of matchingBlocks) {
           const sessionLinks = record.fields.WorkSessions || [];
           timeBlocks.push({
             id: record.id,
@@ -115,8 +121,8 @@ async function getWeekData(weekStartParam?: string) {
     const behavioralEvents: BehavioralEventData[] = [];
 
     if (sessionIds.length > 0) {
-      const evFilterFormula = `OR(${sessionIds.map(id => `FIND('${id}', ARRAYJOIN({WorkSessions}))`).join(', ')})`;
-      const evUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID}?filterByFormula=${encodeURIComponent(evFilterFormula)}`;
+      // Fetch ALL behavioral events and filter in code
+      const evUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID}`;
       
       const evResponse = await fetch(evUrl, {
         headers: {
@@ -127,11 +133,17 @@ async function getWeekData(weekStartParam?: string) {
 
       if (evResponse.ok) {
         const evData = await evResponse.json();
-        const eventRecords = evData.records || [];
+        const allEvents = evData.records || [];
 
-        console.log('[Summary] Found', eventRecords.length, 'behavioral events');
+        // Filter in code instead of using Airtable formula
+        const matchingEvents = allEvents.filter((record: any) => {
+          const sessionLinks = record.fields.WorkSessions || [];
+          return sessionIds.some(sid => sessionLinks.includes(sid));
+        });
 
-        for (const record of eventRecords) {
+        console.log('[Summary] Found', matchingEvents.length, 'behavioral events (filtered from', allEvents.length, 'total)');
+
+        for (const record of matchingEvents) {
           const sessionLinks = record.fields.WorkSessions || [];
           // Parse event type from Name field (e.g., "Event 5" -> extract from Notes or use Name)
           const eventName = record.fields.Name || '';

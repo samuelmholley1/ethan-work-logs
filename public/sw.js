@@ -1,10 +1,11 @@
-const CACHE_NAME = 'uumc-liturgist-v2';
+const CACHE_NAME = 'ethan-work-logger-v1';
 const urlsToCache = [
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
   '/android-chrome-192x192.png',
   '/android-chrome-512x512.png',
   '/apple-touch-icon.png',
-  '/favicon.ico',
-  '/logo-for-church-larger.jpg'
+  '/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {

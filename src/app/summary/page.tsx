@@ -37,6 +37,7 @@ interface BehavioralEventData {
   promptCount: number | null;
   timestamp: string;
   sessionId: string;
+  notes?: string;
 }
 
 async function getWeekData(weekStartParam?: string) {
@@ -155,6 +156,7 @@ async function getWeekData(weekStartParam?: string) {
             promptCount: null, // PromptCount field doesn't exist in schema
             timestamp: record.fields.Timestamp || eventName,
             sessionId: sessionLinks[0] || '',
+            notes: notes,
           });
         }
       }
@@ -311,7 +313,7 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
           {/* Behavioral Data Tally */}
           <div className="mt-8 pt-8 border-t border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
-              Behavioral Data Summary
+              Behavioral Events
             </h3>
             
             {behavioralEvents.length === 0 ? (
@@ -320,50 +322,37 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                  {['VP', 'PP', 'I', 'U'].map(eventType => {
-                    const events = behavioralEvents.filter(e => e.eventType === eventType);
-                    const totalPrompts = events.reduce((sum, e) => sum + (e.promptCount || 0), 0);
-                    
-                    return (
-                      <div key={eventType} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <div className="text-2xl font-bold text-emerald-600 mb-1">
-                          {eventType}
-                        </div>
-                        <div className="text-3xl font-bold text-gray-900 mb-2">
-                          {events.length}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {totalPrompts > 0 && (
-                            <span className="font-medium">
-                              {totalPrompts} prompts
-                            </span>
-                          )}
-                          {events.length === 1 ? ' event' : ' events'}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mb-4 text-sm text-gray-600">
+                  {behavioralEvents.length} {behavioralEvents.length === 1 ? 'event' : 'events'} recorded
                 </div>
-                
-                {(() => {
-                  const unknownEvents = behavioralEvents.filter(
-                    e => !['VP', 'PP', 'I', 'U'].includes(e.eventType)
-                  );
-                  if (unknownEvents.length > 0) {
-                    const typeSet = new Set<string>();
-                    unknownEvents.forEach(e => typeSet.add(e.eventType));
-                    const unknownTypes = Array.from(typeSet);
-                    return (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <p className="text-sm text-yellow-800">
-                          ⚠️ Warning: Found {unknownEvents.length} event(s) with unknown type(s): {unknownTypes.join(', ')}
-                        </p>
+                <div className="space-y-3">
+                  {behavioralEvents.map((event, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {event.eventType}
+                          </div>
+                          {event.notes && (
+                            <div className="text-sm text-gray-600 mb-2">
+                              {event.notes}
+                            </div>
+                          )}
+                          {event.timestamp && (
+                            <div className="text-xs text-gray-500">
+                              {new Date(event.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </div>

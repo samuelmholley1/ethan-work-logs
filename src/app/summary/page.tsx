@@ -360,41 +360,23 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-700">Timesheet</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Link
-                  href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
-                  target="_blank"
-                  className="px-4 py-2 bg-emerald-600 text-white text-center rounded-md hover:bg-emerald-700"
-                >
-                  📄 View
-                </Link>
-                <PDFDownloadLink
-                  href={`/api/generate-pdf/timesheet?week=${format(start, 'yyyy-MM-dd')}`}
-                  filename={`timesheet-${format(start, 'yyyy-MM-dd')}.pdf`}
-                  className="px-4 py-2 bg-blue-600 text-white text-center rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  ⬇️ Download PDF
-                </PDFDownloadLink>
-              </div>
+              <Link
+                href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
+                target="_blank"
+                className="block px-4 py-2 bg-emerald-600 text-white text-center rounded-md hover:bg-emerald-700"
+              >
+                �️ Print PDF
+              </Link>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-700">Behavioral Data Sheet</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Link
-                  href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
-                  target="_blank"
-                  className="px-4 py-2 bg-purple-600 text-white text-center rounded-md hover:bg-purple-700"
-                >
-                  📊 View
-                </Link>
-                <PDFDownloadLink
-                  href={`/api/generate-pdf/behavioral-sheet?month=${format(start, 'yyyy-MM')}`}
-                  filename={`behavioral-data-${format(start, 'yyyy-MM')}.pdf`}
-                  className="px-4 py-2 bg-indigo-600 text-white text-center rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  ⬇️ Download PDF
-                </PDFDownloadLink>
-              </div>
+              <Link
+                href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
+                target="_blank"
+                className="block px-4 py-2 bg-purple-600 text-white text-center rounded-md hover:bg-purple-700"
+              >
+                �️ Print PDF
+              </Link>
             </div>
           </div>
         </>

@@ -31,10 +31,18 @@ const DEFAULT_RECORD_NUMBER = '816719';
 const DEFAULT_SERVICE_TYPE = 'CLS';
 
 export default function NCLRBillingTemplate({ data }: { data: NCLRBillingData }) {
+  console.log('[NCLR TEMPLATE] Rendering with data:', {
+    month: data.month,
+    year: data.year,
+    sessionsCount: data.sessions?.length || 0,
+    timeBlocksCount: data.timeBlocks?.length || 0
+  });
+
   // Process the actual timesheet data if provided
   const dailyEntries: { [key: number]: { timeIn: string; timeOut: string; duration: string } } = {};
   
   if (data.sessions && data.timeBlocks) {
+    console.log('[NCLR TEMPLATE] Processing sessions and time blocks...');
     // Group time blocks by session
     const sessionMap = new Map<string, TimeBlockData[]>();
     for (const block of data.timeBlocks) {
@@ -63,9 +71,12 @@ export default function NCLRBillingTemplate({ data }: { data: NCLRBillingData })
           timeOut: format(lastBlock.roundedEndTime, 'h:mm a'),
           duration: formatDuration(totalMinutes),
         };
+        console.log('[NCLR TEMPLATE] Day', dayOfMonth, ':', dailyEntries[dayOfMonth]);
       }
     }
   }
+
+  console.log('[NCLR TEMPLATE] Daily entries count:', Object.keys(dailyEntries).length);
 
   // Calculate total hours
   let totalMinutes = 0;

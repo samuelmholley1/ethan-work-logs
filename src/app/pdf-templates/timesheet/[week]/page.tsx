@@ -116,6 +116,10 @@ export default async function TimesheetPDFPage({ params }: PageProps) {
   const { week } = await params;
   const { sessions, timeBlocks, weekStart } = await getWeekData(week);
 
+  console.log('[TIMESHEET PDF] Using NCLRBillingTemplate');
+  console.log('[TIMESHEET PDF] Sessions:', sessions.length);
+  console.log('[TIMESHEET PDF] Time blocks:', timeBlocks.length);
+
   const data = {
     month: format(weekStart, 'MMMM'),
     year: format(weekStart, 'yyyy'),
@@ -125,6 +129,8 @@ export default async function TimesheetPDFPage({ params }: PageProps) {
     sessions,
     timeBlocks,
   };
+
+  console.log('[TIMESHEET PDF] Data prepared:', JSON.stringify(data, null, 2));
 
   return <NCLRBillingTemplate data={data} />;
 }

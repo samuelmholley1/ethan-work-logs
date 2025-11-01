@@ -5,11 +5,37 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { sessionId, outcomeId, eventType, promptCount, notes, timestamp } = body;
 
+    // Validate required fields
     if (!sessionId || !outcomeId || !eventType) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: sessionId, outcomeId, and eventType are required' },
         { status: 400 }
       );
+    }
+
+    // Validate event type
+    const validEventTypes = ['VP', 'PP', 'I', 'M', 'U', 'NA', 'R'];
+    if (!validEventTypes.includes(eventType)) {
+      return NextResponse.json(
+        { error: `Invalid event type. Must be one of: ${validEventTypes.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate prompt count
+    const validPromptCount = typeof promptCount === 'number' && promptCount >= 0;
+    if (promptCount !== undefined && !validPromptCount) {
+      return NextResponse.json(
+        { error: 'Prompt count must be a non-negative number' },
+        { status: 400 }
+      );
+    }
+
+    // Build notes with prompt count if provided
+    let finalNotes = notes?.trim() || '';
+    if (promptCount > 0) {
+      const promptInfo = `Prompt Count: ${promptCount}`;
+      finalNotes = finalNotes ? `${finalNotes}\n\n${promptInfo}` : promptInfo;
     }
 
     // Create behavioral event in Airtable
@@ -27,21 +53,25 @@ export async function POST(request: Request) {
             WorkSessions: [sessionId],
             Outcomes: [outcomeId],
             Timestamp: timestamp || new Date().toISOString(),
-            Notes: notes || '',
-            // Store prompt count and event type in notes since fields don't exist
-            ...(promptCount > 0 && {
-              Notes: `${notes ? notes + '\n\n' : ''}Prompt Count: ${promptCount}`
-            }),
+            Notes: finalNotes,
           },
         }),
       }
     );
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       console.error('Airtable API error:', errorData);
+      
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait a moment and try again.' },
+          { status: 429 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to create behavioral event' },
+        { error: errorData.error?.message || 'Failed to create behavioral event' },
         { status: response.status }
       );
     }
@@ -57,8 +87,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error creating behavioral event:', error);
+    
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: 'Invalid request format' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error. Please try again later.' },
       { status: 500 }
     );
   }

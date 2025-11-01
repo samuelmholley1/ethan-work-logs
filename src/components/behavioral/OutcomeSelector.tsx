@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Outcome } from '@/types/worklog';
 
 interface OutcomeSelectorProps {
@@ -15,6 +15,37 @@ export default function OutcomeSelector({ outcomes, onSelect }: OutcomeSelectorP
 
   // Minimum swipe distance (in px)
   const minSwipeDistance = 50;
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        e.preventDefault();
+        setCurrentIndex(currentIndex - 1);
+        if ('vibrate' in navigator) {
+          navigator.vibrate(30);
+        }
+      } else if (e.key === 'ArrowRight' && currentIndex < outcomes.length - 1) {
+        e.preventDefault();
+        setCurrentIndex(currentIndex + 1);
+        if ('vibrate' in navigator) {
+          navigator.vibrate(30);
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const currentOutcome = outcomes[currentIndex];
+        if (currentOutcome) {
+          if ('vibrate' in navigator) {
+            navigator.vibrate(50);
+          }
+          onSelect(currentOutcome);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, outcomes, onSelect]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -34,10 +65,22 @@ export default function OutcomeSelector({ outcomes, onSelect }: OutcomeSelectorP
 
     if (isLeftSwipe && currentIndex < outcomes.length - 1) {
       setCurrentIndex(currentIndex + 1);
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
     }
     if (isRightSwipe && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
     }
+
+    // Reset touch tracking
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   const currentOutcome = outcomes[currentIndex];
@@ -58,12 +101,13 @@ export default function OutcomeSelector({ outcomes, onSelect }: OutcomeSelectorP
 
       {/* Swipeable Card */}
       <div
-        className="w-full max-w-md"
+        className="w-full max-w-md touch-pan-y" 
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        style={{ touchAction: 'pan-y' }}
       >
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-emerald-500 min-h-[280px] flex flex-col justify-between transition-transform active:scale-[0.98]">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-emerald-500 min-h-[280px] flex flex-col justify-between transition-transform active:scale-[0.98] select-none">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold text-lg">
@@ -84,7 +128,12 @@ export default function OutcomeSelector({ outcomes, onSelect }: OutcomeSelectorP
           </div>
 
           <button
-            onClick={() => onSelect(currentOutcome)}
+            onClick={() => {
+              if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+              }
+              onSelect(currentOutcome);
+            }}
             className="mt-6 w-full py-4 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-colors text-lg"
           >
             Select →

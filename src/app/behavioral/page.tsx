@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import EventLogger from '@/components/behavioral/EventLogger';
 import EventTimeline from '@/components/behavioral/EventTimeline';
@@ -13,6 +13,52 @@ export default function BehavioralPage() {
   const [isLoadingOutcomes, setIsLoadingOutcomes] = useState(true);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // Validate and get active session
+  const validateSession = useCallback(() => {
+    try {
+      const savedSession = localStorage.getItem('activeWorkSession');
+      if (!savedSession) {
+        setActiveSessionId(null);
+        setSessionError('No active work session found');
+        return null;
+      }
+
+      const session = JSON.parse(savedSession);
+      
+      // Validate session structure
+      if (!session.id || !session.date) {
+        setActiveSessionId(null);
+        setSessionError('Invalid session data');
+        return null;
+      }
+
+      // Check if session is from today
+      const today = format(new Date(), 'yyyy-MM-dd');
+      if (session.date !== today) {
+        setActiveSessionId(null);
+        setSessionError('Session is not from today. Please start a new session.');
+        return null;
+      }
+
+      // Check if session is still active
+      if (session.status !== 'Active') {
+        setActiveSessionId(null);
+        setSessionError('Session has ended. Please start a new session.');
+        return null;
+      }
+
+      setActiveSessionId(session.id);
+      setSessionError(null);
+      return session.id;
+    } catch (error) {
+      console.error('Error validating session:', error);
+      setActiveSessionId(null);
+      setSessionError('Error loading session data');
+      return null;
+    }
+  }, []);
 
   // Fetch outcomes on mount
   useEffect(() => {
@@ -63,43 +109,62 @@ export default function BehavioralPage() {
   }, []);
 
   // Fetch today's events
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const response = await fetch(`/api/behavioral-events?date=${today}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setEvents(data.events || []);
-        }
-      } catch (error) {
-        console.error('Error fetching events:', error);
-      } finally {
-        setIsLoadingEvents(false);
+  const fetchEvents = useCallback(async () => {
+    setIsLoadingEvents(true);
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const response = await fetch(`/api/behavioral-events?date=${today}`, {
+        cache: 'no-store'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data.events || []);
+      } else {
+        console.error('Failed to fetch events:', response.status);
       }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setIsLoadingEvents(false);
     }
+  }, []);
 
+  useEffect(() => {
     fetchEvents();
-  }, []);
+    
+    // Auto-refresh events every 30 seconds
+    const intervalId = setInterval(fetchEvents, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, [fetchEvents]);
 
-  // Check for active session
+  // Validate session on mount and when page becomes visible
   useEffect(() => {
-    // Try to get active session from localStorage
-    const savedSession = localStorage.getItem('activeWorkSession');
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        setActiveSessionId(session.id);
-      } catch (error) {
-        console.error('Error parsing saved session:', error);
+    validateSession();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        validateSession();
+        fetchEvents();
       }
-    }
-  }, []);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also check session every 60 seconds
+    const sessionCheckInterval = setInterval(validateSession, 60000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(sessionCheckInterval);
+    };
+  }, [validateSession, fetchEvents]);
 
   const handleLogEvent = () => {
-    if (!activeSessionId) {
-      alert('Please start a work session first');
+    // Re-validate session before opening logger
+    const sessionId = validateSession();
+    if (!sessionId) {
       return;
     }
     setShowLogger(true);
@@ -108,14 +173,8 @@ export default function BehavioralPage() {
   const handleSuccess = async () => {
     setShowLogger(false);
     
-    // Refresh events
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const response = await fetch(`/api/behavioral-events?date=${today}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      setEvents(data.events || []);
-    }
+    // Refresh events immediately
+    await fetchEvents();
 
     // Show success feedback
     if ('vibrate' in navigator) {
@@ -147,12 +206,20 @@ export default function BehavioralPage() {
       </div>
 
       {/* Status Card */}
-      {!activeSessionId && (
+      {sessionError && (
         <div className="p-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              ⚠️ No active work session. Start a session to log behavioral events.
-            </p>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-yellow-900 mb-1">
+                  {sessionError}
+                </p>
+                <p className="text-xs text-yellow-800">
+                  Go to the home page to start a new work session.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

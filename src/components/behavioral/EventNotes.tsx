@@ -42,6 +42,14 @@ export default function EventNotes({
       recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        // Show user-friendly error
+        if (event.error === 'not-allowed') {
+          alert('Microphone permission denied. Please enable microphone access in your browser settings.');
+        } else if (event.error === 'no-speech') {
+          alert('No speech detected. Please try again.');
+        } else {
+          console.error('Speech recognition error:', event.error);
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -50,11 +58,15 @@ export default function EventNotes({
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
       }
     };
-  }, [notes, onNotesChange]);
+  }, [notes, onNotesChange, isListening]);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
@@ -63,19 +75,30 @@ export default function EventNotes({
 
   const startVoiceInput = () => {
     if (recognitionRef.current && !isListening) {
-      setIsListening(true);
-      recognitionRef.current.start();
-      // Haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(100);
+      try {
+        setIsListening(true);
+        recognitionRef.current.start();
+        // Haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100);
+        }
+      } catch (error) {
+        console.error('Failed to start voice recognition:', error);
+        setIsListening(false);
+        alert('Unable to start voice input. Please try again.');
       }
     }
   };
 
   const stopVoiceInput = () => {
     if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+      try {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      } catch (error) {
+        console.error('Failed to stop voice recognition:', error);
+        setIsListening(false);
+      }
     }
   };
 
@@ -99,8 +122,9 @@ export default function EventNotes({
         />
 
         <div className="flex items-center justify-between mt-2 mb-6">
-          <span className="text-xs text-gray-500">
+          <span className={`text-xs ${notes.length > 450 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
             {notes.length}/500 characters
+            {notes.length > 450 && ' - Close to limit!'}
           </span>
           {voiceSupported && (
             <span className="text-xs text-emerald-600">

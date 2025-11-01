@@ -118,10 +118,22 @@ export function useBehavioralLogger(sessionId: string) {
       return false;
     }
 
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      return false;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Use current timestamp at submission time, not form start time
+      const submissionTime = new Date().toISOString();
+
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
       const response = await fetch('/api/behavioral-events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,13 +142,26 @@ export function useBehavioralLogger(sessionId: string) {
           outcomeId: state.selectedOutcome.id,
           eventType: state.eventType,
           promptCount: state.promptCount,
-          notes: state.notes,
-          timestamp: state.timestamp.toISOString(),
+          notes: state.notes.trim(), // Trim whitespace
+          timestamp: submissionTime,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error('Failed to save behavioral event');
+        if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error('Event saved but confirmation failed');
       }
 
       // Success! Reset form
@@ -151,12 +176,22 @@ export function useBehavioralLogger(sessionId: string) {
 
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save event');
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Request timed out. Please check your connection and try again.');
+        } else if (err.message.includes('Failed to fetch')) {
+          setError('Network error. Check your internet connection.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Failed to save event. Please try again.');
+      }
       return false;
     } finally {
       setIsSubmitting(false);
     }
-  }, [state, sessionId]);
+  }, [state, sessionId, isSubmitting]);
 
   const reset = useCallback(() => {
     setState({

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useBehavioralLogger } from '@/hooks/useBehavioralLogger';
 import OutcomeSelector from './OutcomeSelector';
 import EventTypeButtons from './EventTypeButtons';
@@ -36,10 +37,64 @@ export default function EventLogger({
     reset,
   } = useBehavioralLogger(sessionId);
 
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      if (state.step === 'outcome') {
+        if (onCancel) onCancel();
+      } else {
+        goBack();
+      }
+    };
+
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [state.step, goBack, onCancel]);
+
+  // Prevent accidental page unload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (state.step !== 'outcome' && state.selectedOutcome) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state.step, state.selectedOutcome]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        if (state.step === 'outcome') {
+          if (onCancel) onCancel();
+        } else {
+          goBack();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.step, isSubmitting, goBack, onCancel]);
+
   const handleSubmit = async () => {
     const success = await submitEvent();
-    if (success && onSuccess) {
-      onSuccess();
+    if (success) {
+      // Success feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100, 50, 100]);
+      }
+      if (onSuccess) {
+        onSuccess();
+      }
     }
   };
 
@@ -50,15 +105,50 @@ export default function EventLogger({
     }
   };
 
+  // Validate outcomes exist
+  if (!outcomes || outcomes.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            No Outcomes Available
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Unable to load behavioral outcomes. Please try again later.
+          </p>
+          <button
+            onClick={handleCancel}
+            className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-xl hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+      {/* Screen Reader Announcements */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {state.step === 'outcome' && 'Step 1 of 5: Select an outcome'}
+        {state.step === 'eventType' && 'Step 2 of 5: Select event type'}
+        {state.step === 'promptCount' && 'Step 3 of 5: Enter prompt count'}
+        {state.step === 'notes' && 'Step 4 of 5: Add optional notes'}
+        {state.step === 'confirm' && 'Step 5 of 5: Review and confirm'}
+        {error && `Error: ${error}`}
+        {isSubmitting && 'Saving event...'}
+      </div>
+
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10 shadow-sm">
         <div className="flex items-center justify-between p-4">
           <button
             onClick={state.step === 'outcome' ? handleCancel : goBack}
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isSubmitting}
+            aria-label={state.step === 'outcome' ? 'Cancel logging' : 'Go back'}
           >
             <span className="text-xl">←</span>
             <span>{state.step === 'outcome' ? 'Cancel' : 'Back'}</span>
@@ -68,7 +158,15 @@ export default function EventLogger({
             Log Behavioral Event
           </h1>
 
-          <div className="w-20"></div> {/* Spacer for centering */}
+          <div className="w-20 text-right">
+            <span className="text-xs text-gray-500">
+              {state.step === 'outcome' && '1/5'}
+              {state.step === 'eventType' && '2/5'}
+              {state.step === 'promptCount' && '3/5'}
+              {state.step === 'notes' && '4/5'}
+              {state.step === 'confirm' && '5/5'}
+            </span>
+          </div>
         </div>
 
         {/* Progress Indicator */}

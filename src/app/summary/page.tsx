@@ -262,35 +262,49 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   const params = await searchParams;
   
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Summary & Export
-          </h1>
-          <p className="text-gray-600">
-            View and export your timesheet and behavioral data.
+    <div className="min-h-screen bg-gray-50">
+      {/* Header with teal gradient - matching senior center style */}
+      <div className="bg-gradient-to-r from-[#427d78] to-[#5eb3a1] shadow-sm border-b-2 border-teal-600">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <h1 className="text-2xl font-bold text-white">Timesheet Summary</h1>
+          <p className="text-sm text-white/90 mt-1">
+            Ethan's Work Logs - View and edit timesheet and behavioral data
           </p>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-8">
         <WeekNavigator />
 
-        <Suspense fallback={<div className="bg-white rounded-lg shadow-md p-6">Loading...</div>}>
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin"></div>
+              <p className="text-gray-600 font-medium">Loading timesheet data...</p>
+            </div>
+          </div>
+        }>
           <WeekSummary weekStart={params.week} />
         </Suspense>
 
-        <div className="mt-6 flex gap-4">
+        <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
           <Link
             href="/manual-entry"
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="px-4 sm:px-6 py-3 bg-[#427d78] text-white font-semibold rounded-lg hover:bg-[#356760] transition-colors inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
           >
-            + Add Manual Entry
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Manual Entry
           </Link>
           <Link
             href="/"
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="px-4 sm:px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
           >
-            ← Back to Timer
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Timer
           </Link>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { EditableTimesheet } from '@/components/EditableTimesheet';
+import { EditableTimesheetSeniorStyle } from '@/components/EditableTimesheetSeniorStyle';
 
 interface WeekSummaryClientProps {
   dailySummaries: any[];
@@ -31,15 +31,15 @@ export function WeekSummaryClient({
   return (
     <div className="space-y-8">
       {/* Editable Timesheet */}
-      <EditableTimesheet
+      <EditableTimesheetSeniorStyle
         dailySummaries={initialSummaries}
         weekStartDate={weekStart}
         onRefresh={handleRefresh}
       />
 
       {/* Behavioral Data Tally */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">
+      <div className="bg-white rounded-lg shadow-sm border-2 border-teal-500 p-6">
+        <h3 className="text-xl font-semibold text-teal-700 mb-4">
           Behavioral Events
         </h3>
         
@@ -84,27 +84,27 @@ export function WeekSummaryClient({
         )}
 
         {/* PDF Export Buttons */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Timesheet</p>
-            <Link
-              href={`/pdf-templates/timesheet/${format(weekStart, 'yyyy-MM-dd')}`}
-              target="_blank"
-              className="block px-4 py-2 bg-emerald-600 text-white text-center rounded-md hover:bg-emerald-700"
-            >
-              🖨️ Print PDF
-            </Link>
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Behavioral Data Sheet</p>
-            <Link
-              href={`/pdf-templates/behavioral/${format(weekStart, 'yyyy-MM')}`}
-              target="_blank"
-              className="block px-4 py-2 bg-purple-600 text-white text-center rounded-md hover:bg-purple-700"
-            >
-              🖨️ Print PDF
-            </Link>
-          </div>
+        <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <Link
+            href={`/pdf-templates/timesheet/${format(weekStart, 'yyyy-MM-dd')}`}
+            target="_blank"
+            className="px-4 sm:px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Export Timesheet PDF
+          </Link>
+          <Link
+            href={`/pdf-templates/behavioral/${format(weekStart, 'yyyy-MM')}`}
+            target="_blank"
+            className="px-4 sm:px-6 py-3 bg-[#427d78] text-white font-semibold rounded-lg hover:bg-[#356760] transition-colors inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export Behavioral PDF
+          </Link>
         </div>
       </div>
 

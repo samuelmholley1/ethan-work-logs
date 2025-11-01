@@ -1,4 +1,4 @@
-import WeeklyTimesheetTemplate from '@/components/pdf/WeeklyTimesheetTemplate';
+import NCLRBillingTemplate from '@/components/pdf/NCLRBillingTemplate';
 import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
 
 interface PageProps {
@@ -119,10 +119,12 @@ export default async function TimesheetPDFPage({ params }: PageProps) {
   const data = {
     month: format(weekStart, 'MMMM'),
     year: format(weekStart, 'yyyy'),
-    weekStart: format(weekStart, 'yyyy-MM-dd'),
+    clientName: 'Elijah Wright',
+    recordNumber: '816719',
+    serviceType: sessions.length > 0 ? sessions[0].serviceType : 'CLS',
     sessions,
     timeBlocks,
   };
 
-  return <WeeklyTimesheetTemplate data={data} />;
+  return <NCLRBillingTemplate data={data} />;
 }

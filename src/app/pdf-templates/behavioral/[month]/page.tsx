@@ -117,10 +117,29 @@ export default async function BehavioralDataSheetPDFPage({ params, searchParams 
   // Format as "MARCH 2025"
   const monthStr = format(monthDate, 'MMMM yyyy').toUpperCase();
   
+  // Filter events by half month if specified
+  const halfMonth = half || 'first';
+  const filteredEvents = behavioralEvents.filter((event) => {
+    try {
+      const eventDate = new Date(event.timestamp);
+      const dayOfMonth = eventDate.getDate();
+      
+      if (halfMonth === 'first') {
+        return dayOfMonth >= 1 && dayOfMonth <= 15;
+      } else {
+        return dayOfMonth >= 16 && dayOfMonth <= 31;
+      }
+    } catch (e) {
+      return false; // Exclude events with invalid timestamps
+    }
+  });
+  
+  console.log('[Behavioral PDF] Filtered', filteredEvents.length, 'events for', halfMonth, 'half');
+  
   const data = {
     month: monthStr,
-    halfMonth: half || 'first', // Default to first half (days 1-15)
-    events: behavioralEvents,
+    halfMonth,
+    events: filteredEvents,
   };
 
   return <BehavioralDataSheetTemplate data={data} />;

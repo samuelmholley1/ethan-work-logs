@@ -1,9 +1,28 @@
+import { format, parseISO } from 'date-fns';
+import { apply15MinuteRounding, formatDuration, calculateTotalDuration } from '@/lib/rounding';
+
+interface WorkSessionData {
+  id: string;
+  date: string;
+  serviceType: string;
+  userId: string;
+}
+
+interface TimeBlockData {
+  id: string;
+  startTime: string;
+  endTime: string | null;
+  sessionId: string;
+}
+
 interface NCLRBillingData {
   month: string; // e.g., "January"
   year: string;  // e.g., "2025"
   clientName?: string;
   recordNumber?: string;
   serviceType?: string; // e.g., "CLS"
+  sessions?: WorkSessionData[];
+  timeBlocks?: TimeBlockData[];
 }
 
 // Default values
@@ -12,6 +31,60 @@ const DEFAULT_RECORD_NUMBER = '816719';
 const DEFAULT_SERVICE_TYPE = 'CLS';
 
 export default function NCLRBillingTemplate({ data }: { data: NCLRBillingData }) {
+  // Process the actual timesheet data if provided
+  const dailyEntries: { [key: number]: { timeIn: string; timeOut: string; duration: string } } = {};
+  
+  if (data.sessions && data.timeBlocks) {
+    // Group time blocks by session
+    const sessionMap = new Map<string, TimeBlockData[]>();
+    for (const block of data.timeBlocks) {
+      if (!sessionMap.has(block.sessionId)) {
+        sessionMap.set(block.sessionId, []);
+      }
+      sessionMap.get(block.sessionId)!.push(block);
+    }
+
+    // Process each session and populate daily entries
+    for (const session of data.sessions) {
+      const blocks = sessionMap.get(session.id) || [];
+      if (blocks.length === 0) continue;
+
+      const roundedBlocks = apply15MinuteRounding(blocks);
+      const dayOfMonth = new Date(session.date).getDate();
+
+      // For simplicity, take the first and last time block for the day
+      if (roundedBlocks.length > 0) {
+        const firstBlock = roundedBlocks[0];
+        const lastBlock = roundedBlocks[roundedBlocks.length - 1];
+        const totalMinutes = calculateTotalDuration(roundedBlocks);
+
+        dailyEntries[dayOfMonth] = {
+          timeIn: format(firstBlock.roundedStartTime, 'h:mm a'),
+          timeOut: format(lastBlock.roundedEndTime, 'h:mm a'),
+          duration: formatDuration(totalMinutes),
+        };
+      }
+    }
+  }
+
+  // Calculate total hours
+  let totalMinutes = 0;
+  if (data.sessions && data.timeBlocks) {
+    const sessionMap = new Map<string, TimeBlockData[]>();
+    for (const block of data.timeBlocks) {
+      if (!sessionMap.has(block.sessionId)) {
+        sessionMap.set(block.sessionId, []);
+      }
+      sessionMap.get(block.sessionId)!.push(block);
+    }
+
+    for (const session of data.sessions) {
+      const blocks = sessionMap.get(session.id) || [];
+      const roundedBlocks = apply15MinuteRounding(blocks);
+      totalMinutes += calculateTotalDuration(roundedBlocks);
+    }
+  }
+
   return (
     <html lang="en">
       <head>
@@ -201,21 +274,28 @@ export default function NCLRBillingTemplate({ data }: { data: NCLRBillingData })
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 31 }, (_, i) => (
-              <tr key={i + 1}>
-                <td className="row-cell">{i + 1}</td>
-                <td className="row-cell"></td>
-                <td className="row-cell"></td>
-                <td className="row-cell"></td>
-              </tr>
-            ))}
+            {Array.from({ length: 31 }, (_, i) => {
+              const dayNum = i + 1;
+              const entry = dailyEntries[dayNum];
+              
+              return (
+                <tr key={dayNum}>
+                  <td className="row-cell">{dayNum}</td>
+                  <td className="row-cell">{entry?.timeIn || ''}</td>
+                  <td className="row-cell">{entry?.timeOut || ''}</td>
+                  <td className="row-cell">{entry?.duration || ''}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
         {/* Total Hours */}
         <div className="total-section">
           <span className="total-label">Total Hours</span>
-          <div className="total-box"></div>
+          <div className="total-box" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px' }}>
+            {totalMinutes > 0 ? formatDuration(totalMinutes) : ''}
+          </div>
         </div>
 
         {/* Signature Section */}

@@ -1,6 +1,17 @@
+import { format, parseISO } from 'date-fns';
+
+interface BehavioralEventData {
+  id: string;
+  eventType: string;
+  timestamp: string;
+  sessionId: string;
+  notes?: string;
+}
+
 interface BehavioralDataSheetData {
   month: string;
   halfMonth: 'first' | 'second';
+  events?: BehavioralEventData[];
 }
 
 const OUTCOMES = [
@@ -65,7 +76,21 @@ export default function BehavioralDataSheetTemplate({ data }: { data: Behavioral
           <div style={{ marginBottom: '20px' }}>
             <div style={{ fontWeight: 'bold', fontSize: '10pt', marginBottom: '5px' }}>DATE</div>
             <div style={{ fontWeight: 'bold', fontSize: '10pt', marginBottom: '5px' }}>COMMENTS</div>
-            <div style={{ border: '1px solid black', minHeight: '150px', padding: '10px' }}></div>
+            <div style={{ border: '1px solid black', minHeight: '150px', padding: '10px' }}>
+              {data.events && data.events.length > 0 ? (
+                <div>
+                  {data.events.map((event, idx) => (
+                    <div key={event.id} style={{ marginBottom: '8px', fontSize: '8pt' }}>
+                      <strong>{event.eventType}</strong>
+                      {event.timestamp && <span> - {format(parseISO(event.timestamp), 'MMM d, h:mm a')}</span>}
+                      {event.notes && <div style={{ marginLeft: '10px', color: '#333' }}>{event.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: '#666', fontSize: '8pt' }}>No behavioral events recorded for this period.</div>
+              )}
+            </div>
           </div>
           <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>ALL STAFF PERSONS WORKING WITH THIS INDIVIDUAL MUST FILL OUT THE INFORMATION BELOW</div>
           <table style={{ marginBottom: '20px' }}>

@@ -1,4 +1,5 @@
-import TimesheetTemplate from '@/components/pdf/TimesheetTemplate';
+import WeeklyTimesheetTemplate from '@/components/pdf/WeeklyTimesheetTemplate';
+import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
 
 interface PageProps {
   params: Promise<{
@@ -6,26 +7,122 @@ interface PageProps {
   }>;
 }
 
+interface WorkSessionData {
+  id: string;
+  date: string;
+  serviceType: string;
+  userId: string;
+}
+
+interface TimeBlockData {
+  id: string;
+  startTime: string;
+  endTime: string | null;
+  sessionId: string;
+}
+
+async function getWeekData(weekStartParam: string) {
+  try {
+    const start = startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 });
+    const end = endOfWeek(start, { weekStartsOn: 1 });
+
+    const startDate = format(start, 'yyyy-MM-dd');
+    const endDate = format(addDays(end, 1), 'yyyy-MM-dd');
+    
+    console.log('[Timesheet PDF] Fetching data for week:', startDate, 'to', endDate);
+
+    // Fetch work sessions
+    const sessions: WorkSessionData[] = [];
+    const wsUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_WORKSESSIONS_TABLE_ID}`;
+    
+    const wsResponse = await fetch(wsUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      cache: 'no-store'
+    });
+
+    if (wsResponse.ok) {
+      const wsData = await wsResponse.json();
+      const allSessions = wsData.records || [];
+
+      // Filter sessions by date range
+      const matchingSessions = allSessions.filter((record: any) => {
+        const date = record.fields.Date;
+        return date >= startDate && date < endDate;
+      });
+
+      console.log('[Timesheet PDF] Found', matchingSessions.length, 'sessions');
+
+      for (const record of matchingSessions) {
+        const userLinks = record.fields.Users || [];
+        sessions.push({
+          id: record.id,
+          date: record.fields.Date || '',
+          serviceType: record.fields.ServiceType || '',
+          userId: userLinks[0] || '',
+        });
+      }
+    }
+
+    // Fetch time blocks
+    const timeBlocks: TimeBlockData[] = [];
+    const sessionIds = sessions.map(s => s.id);
+
+    if (sessionIds.length > 0) {
+      const tbUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}`;
+      
+      const tbResponse = await fetch(tbUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-store'
+      });
+
+      if (tbResponse.ok) {
+        const tbData = await tbResponse.json();
+        const allTimeBlocks = tbData.records || [];
+
+        const matchingBlocks = allTimeBlocks.filter((record: any) => {
+          const sessionLinks = record.fields.WorkSessions || [];
+          return sessionIds.some(sid => sessionLinks.includes(sid));
+        });
+
+        console.log('[Timesheet PDF] Found', matchingBlocks.length, 'time blocks');
+
+        for (const record of matchingBlocks) {
+          const sessionLinks = record.fields.WorkSessions || [];
+          timeBlocks.push({
+            id: record.id,
+            startTime: record.fields.StartTime || record.fields.Name,
+            endTime: record.fields.EndTime || null,
+            sessionId: sessionLinks[0] || '',
+          });
+        }
+      }
+    }
+
+    return { sessions, timeBlocks, weekStart: start };
+  } catch (error) {
+    console.error('[Timesheet PDF] Error fetching data:', error);
+    const start = startOfWeek(new Date(weekStartParam), { weekStartsOn: 1 });
+    return { sessions: [], timeBlocks: [], weekStart: start };
+  }
+}
+
 export default async function TimesheetPDFPage({ params }: PageProps) {
   const { week } = await params;
-  
-  // Parse week format "2025-W01" or convert to month format "2025-01"
-  // For now, just extract year and use January as default
-  const year = week.split('-')[0] || '2025';
-  
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  // Get current month or default to January
-  const currentMonth = new Date().getMonth();
-  const monthName = monthNames[currentMonth];
+  const { sessions, timeBlocks, weekStart } = await getWeekData(week);
 
   const data = {
-    month: monthName,
-    year: year,
+    month: format(weekStart, 'MMMM'),
+    year: format(weekStart, 'yyyy'),
+    weekStart: format(weekStart, 'yyyy-MM-dd'),
+    sessions,
+    timeBlocks,
   };
 
-  return <TimesheetTemplate data={data} />;
+  return <WeeklyTimesheetTemplate data={data} />;
 }

@@ -38,6 +38,20 @@ export async function POST(request: Request) {
       finalNotes = finalNotes ? `${finalNotes}\n\n${promptInfo}` : promptInfo;
     }
 
+    // Handle manual entry (no active session)
+    const isManualEntry = sessionId === 'manual-entry';
+    const fields: any = {
+      Name: `${eventType} Event`,
+      Outcomes: [outcomeId],
+      Timestamp: timestamp || new Date().toISOString(),
+      Notes: finalNotes,
+    };
+
+    // Only add WorkSessions link if not manual entry
+    if (!isManualEntry) {
+      fields.WorkSessions = [sessionId];
+    }
+
     // Create behavioral event in Airtable
     const response = await fetch(
       `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_BEHAVIORALEVENTS_TABLE_ID}`,
@@ -47,15 +61,7 @@ export async function POST(request: Request) {
           'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          fields: {
-            Name: `${eventType} Event`,
-            WorkSessions: [sessionId],
-            Outcomes: [outcomeId],
-            Timestamp: timestamp || new Date().toISOString(),
-            Notes: finalNotes,
-          },
-        }),
+        body: JSON.stringify({ fields }),
       }
     );
 

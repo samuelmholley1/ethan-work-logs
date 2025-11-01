@@ -162,9 +162,10 @@ export default function BehavioralPage() {
   }, [validateSession, fetchEvents]);
 
   const handleLogEvent = () => {
-    // Re-validate session before opening logger
-    const sessionId = validateSession();
-    if (!sessionId) {
+    // Allow logging even without active session - use a placeholder
+    if (!activeSessionId) {
+      // Create a temporary session ID or use 'manual-entry'
+      setShowLogger(true);
       return;
     }
     setShowLogger(true);
@@ -185,7 +186,7 @@ export default function BehavioralPage() {
   if (showLogger) {
     return (
       <EventLogger
-        sessionId={activeSessionId || ''}
+        sessionId={activeSessionId || 'manual-entry'}
         outcomes={outcomes}
         onSuccess={handleSuccess}
         onCancel={() => setShowLogger(false)}
@@ -208,15 +209,15 @@ export default function BehavioralPage() {
       {/* Status Card */}
       {sessionError && (
         <div className="p-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">⚠️</span>
+              <span className="text-2xl">ℹ️</span>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-yellow-900 mb-1">
-                  {sessionError}
+                <p className="text-sm font-semibold text-blue-900 mb-1">
+                  No active session
                 </p>
-                <p className="text-xs text-yellow-800">
-                  Go to the home page to start a new work session.
+                <p className="text-xs text-blue-800">
+                  You can still log behavioral events. They'll be saved without a work session link.
                 </p>
               </div>
             </div>
@@ -230,7 +231,7 @@ export default function BehavioralPage() {
       {/* Floating Action Button */}
       <button
         onClick={handleLogEvent}
-        disabled={!activeSessionId || isLoadingOutcomes}
+        disabled={isLoadingOutcomes}
         className="fixed bottom-6 right-6 w-16 h-16 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-full shadow-lg flex items-center justify-center text-3xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 z-50"
         aria-label="Log new event"
       >

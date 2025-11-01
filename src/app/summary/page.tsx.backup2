@@ -251,6 +251,163 @@ async function WeekSummary({ weekStart }: { weekStart?: string }) {
     />
   );
 }
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          Timesheet Summary
+        </h2>
+        <p className="text-sm text-gray-600">
+          Week of {format(start, 'MMM d, yyyy')}
+        </p>
+      </div>
+
+      {dailySummaries.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">
+          No work sessions found for this week.
+        </p>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time In
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time Out
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Duration
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dailySummaries.map((day) =>
+                  day.sessions.map((session, sessionIdx) =>
+                    session.roundedBlocks.map((block, blockIdx) => (
+                      <tr key={`${day.date}-${sessionIdx}-${blockIdx}`}>
+                        {blockIdx === 0 && sessionIdx === 0 && (
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                            rowSpan={day.sessions.reduce((sum, s) => sum + s.roundedBlocks.length, 0)}
+                          >
+                            {format(new Date(day.date), 'EEE, MMM d')}
+                          </td>
+                        )}
+                        {blockIdx === 0 && (
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-700"
+                            rowSpan={session.roundedBlocks.length}
+                          >
+                            {session.serviceType}
+                          </td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {format(block.roundedStartTime, 'h:mm a')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {format(block.roundedEndTime, 'h:mm a')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {formatDuration(block.duration)}
+                        </td>
+                      </tr>
+                    ))
+                  )
+                )}
+                <tr className="bg-emerald-50">
+                  <td colSpan={4} className="px-6 py-4 text-right text-sm font-bold text-gray-900">
+                    Weekly Total:
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-700">
+                    {formatDuration(weeklyTotal)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Behavioral Data Tally */}
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Behavioral Events
+            </h3>
+            
+            {behavioralEvents.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                No behavioral events recorded for this week.
+              </p>
+            ) : (
+              <>
+                <div className="mb-4 text-sm text-gray-600">
+                  {behavioralEvents.length} {behavioralEvents.length === 1 ? 'event' : 'events'} recorded
+                </div>
+                <div className="space-y-3">
+                  {behavioralEvents.map((event, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {event.eventType}
+                          </div>
+                          {event.notes && (
+                            <div className="text-sm text-gray-600 mb-2">
+                              {event.notes}
+                            </div>
+                          )}
+                          {event.timestamp && (
+                            <div className="text-xs text-gray-500">
+                              {new Date(event.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Timesheet</p>
+              <Link
+                href={`/pdf-templates/timesheet/${format(start, 'yyyy-MM-dd')}`}
+                target="_blank"
+                className="block px-4 py-2 bg-emerald-600 text-white text-center rounded-md hover:bg-emerald-700"
+              >
+                �️ Print PDF
+              </Link>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Behavioral Data Sheet</p>
+              <Link
+                href={`/pdf-templates/behavioral/${format(start, 'yyyy-MM')}`}
+                target="_blank"
+                className="block px-4 py-2 bg-purple-600 text-white text-center rounded-md hover:bg-purple-700"
+              >
+                �️ Print PDF
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface PageProps {
   searchParams: Promise<{

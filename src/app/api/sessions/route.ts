@@ -63,18 +63,39 @@ export async function GET(request: NextRequest) {
     });
 
     let activeTimeBlockId = null;
+    let activeTimeBlockStartTime = null;
+    let totalElapsedSeconds = 0;
+    
     if (timeBlockResponse.ok) {
       const timeBlockData = await timeBlockResponse.json();
       const allBlocks = timeBlockData.records || [];
       
-      // Find blocks linked to this session without endTime
-      const activeBlock = allBlocks.find((record: any) => {
+      // Find all blocks linked to this session
+      const sessionBlocks = allBlocks.filter((record: any) => {
         const sessionLinks = record.fields.WorkSessions || [];
-        return sessionLinks.includes(session.id) && !record.fields.EndTime;
+        return sessionLinks.includes(session.id);
       });
       
-      if (activeBlock) {
-        activeTimeBlockId = activeBlock.id;
+      // Calculate total elapsed time from all completed blocks
+      for (const block of sessionBlocks) {
+        const startTime = block.fields.StartTime;
+        const endTime = block.fields.EndTime;
+        
+        if (startTime && endTime) {
+          // Completed block - add to total
+          const start = new Date(startTime).getTime();
+          const end = new Date(endTime).getTime();
+          totalElapsedSeconds += Math.floor((end - start) / 1000);
+        } else if (startTime && !endTime) {
+          // Active block - this is the current one
+          activeTimeBlockId = block.id;
+          activeTimeBlockStartTime = startTime;
+          
+          // Add elapsed time for current active block
+          const start = new Date(startTime).getTime();
+          const now = Date.now();
+          totalElapsedSeconds += Math.floor((now - start) / 1000);
+        }
       }
     }
 
@@ -85,6 +106,8 @@ export async function GET(request: NextRequest) {
         date: session.fields.Date,
         status: session.fields.Status,
         activeTimeBlockId,
+        activeTimeBlockStartTime,
+        totalElapsedSeconds,
       }
     });
   } catch (error) {

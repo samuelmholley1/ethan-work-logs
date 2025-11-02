@@ -428,7 +428,7 @@ export const useTimerStore = create<TimerState>()(
           }
 
           // Active session exists in Airtable
-          const { id, serviceType, activeTimeBlockId } = data.session
+          const { id, serviceType, activeTimeBlockId, activeTimeBlockStartTime, totalElapsedSeconds } = data.session
 
           // Update local state if different
           if (state.activeSessionId !== id) {
@@ -438,7 +438,8 @@ export const useTimerStore = create<TimerState>()(
               activeSessionDate: date,
               activeServiceType: serviceType,
               activeTimeBlockId: activeTimeBlockId || null,
-              timeBlockStartTime: activeTimeBlockId ? new Date().toISOString() : null,
+              timeBlockStartTime: activeTimeBlockStartTime || null,
+              elapsedSeconds: totalElapsedSeconds || 0,
               lastUpdateTime: Date.now(),
             })
           } else if (state.activeTimeBlockId !== activeTimeBlockId) {
@@ -446,7 +447,15 @@ export const useTimerStore = create<TimerState>()(
             console.log('Syncing time block from Airtable:', activeTimeBlockId)
             set({
               activeTimeBlockId: activeTimeBlockId || null,
-              timeBlockStartTime: activeTimeBlockId ? new Date().toISOString() : null,
+              timeBlockStartTime: activeTimeBlockStartTime || null,
+              elapsedSeconds: totalElapsedSeconds || 0,
+              lastUpdateTime: Date.now(),
+            })
+          } else {
+            // Just update elapsed seconds to keep accurate
+            set({
+              elapsedSeconds: totalElapsedSeconds || 0,
+              lastUpdateTime: Date.now(),
             })
           }
         } catch (error) {

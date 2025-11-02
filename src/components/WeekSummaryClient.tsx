@@ -21,6 +21,7 @@ export function WeekSummaryClient({
 }: WeekSummaryClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [lastSync, setLastSync] = useState<Date>(new Date());
 
   const handleRefresh = () => {
     startTransition(() => {
@@ -33,6 +34,7 @@ export function WeekSummaryClient({
     const interval = setInterval(() => {
       startTransition(() => {
         router.refresh();
+        setLastSync(new Date());
       });
     }, 3000);
 
@@ -41,6 +43,14 @@ export function WeekSummaryClient({
 
   return (
     <div className="space-y-8">
+      {/* Sync indicator */}
+      {isPending && (
+        <div className="fixed top-4 right-4 bg-teal-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium">Syncing...</span>
+        </div>
+      )}
+
       {/* PDF Export Buttons - At Top */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <Link

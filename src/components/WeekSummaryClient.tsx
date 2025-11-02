@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -27,6 +27,17 @@ export function WeekSummaryClient({
       router.refresh();
     });
   };
+
+  // Auto-refresh data every 3 seconds to sync with other devices
+  useEffect(() => {
+    const interval = setInterval(() => {
+      startTransition(() => {
+        router.refresh();
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [router]);
 
   return (
     <div className="space-y-8">

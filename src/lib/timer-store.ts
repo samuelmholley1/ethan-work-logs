@@ -42,6 +42,7 @@ interface TimerState {
   
   // Helpers
   updateElapsedTime: () => void
+  syncFromAirtable: () => Promise<void>
   reset: () => void
   isActive: () => boolean
 }
@@ -391,6 +392,67 @@ export const useTimerStore = create<TimerState>()(
           elapsedSeconds: 0,
           lastUpdateTime: null,
         })
+      },
+
+      // Sync state from Airtable - for multi-device support
+      syncFromAirtable: async () => {
+        const state = get()
+        const userId = state.userId || 'default-user'
+        const date = new Date().toISOString().split('T')[0]
+
+        try {
+          const response = await fetch(`/api/sessions?userId=${userId}&date=${date}`)
+          
+          if (!response.ok) {
+            console.warn('Failed to sync from Airtable:', response.status)
+            return
+          }
+
+          const data = await response.json()
+          
+          if (!data.session) {
+            // No active session in Airtable - clear local state if we think we're clocked in
+            if (state.activeSessionId) {
+              console.log('No active session in Airtable - clearing local state')
+              set({
+                activeSessionId: null,
+                activeSessionDate: null,
+                activeServiceType: null,
+                activeTimeBlockId: null,
+                timeBlockStartTime: null,
+                elapsedSeconds: 0,
+                lastUpdateTime: null,
+              })
+            }
+            return
+          }
+
+          // Active session exists in Airtable
+          const { id, serviceType, activeTimeBlockId } = data.session
+
+          // Update local state if different
+          if (state.activeSessionId !== id) {
+            console.log('Syncing session from Airtable:', id)
+            set({
+              activeSessionId: id,
+              activeSessionDate: date,
+              activeServiceType: serviceType,
+              activeTimeBlockId: activeTimeBlockId || null,
+              timeBlockStartTime: activeTimeBlockId ? new Date().toISOString() : null,
+              lastUpdateTime: Date.now(),
+            })
+          } else if (state.activeTimeBlockId !== activeTimeBlockId) {
+            // Session same but time block changed (break started/ended on another device)
+            console.log('Syncing time block from Airtable:', activeTimeBlockId)
+            set({
+              activeTimeBlockId: activeTimeBlockId || null,
+              timeBlockStartTime: activeTimeBlockId ? new Date().toISOString() : null,
+            })
+          }
+        } catch (error) {
+          console.error('Error syncing from Airtable:', error)
+          // Don't throw - sync is non-critical
+        }
       },
 
       // Check if timer is active

@@ -6,6 +6,97 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
 );
 
 /**
+ * GET /api/sessions?userId=xxx&date=YYYY-MM-DD
+ * Fetch active session for a user on a specific date
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Missing required parameter: userId' },
+        { status: 400 }
+      );
+    }
+
+    if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID || !process.env.AIRTABLE_WORKSESSIONS_TABLE_ID || !process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID) {
+      console.error('Missing Airtable environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch active session for this user today
+    const sessionUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_WORKSESSIONS_TABLE_ID}`;
+    const filterFormula = `AND({Date} = '${date}', {Status} = 'Active', SEARCH('${userId}', ARRAYJOIN({User})) > 0)`;
+    
+    const sessionResponse = await fetch(`${sessionUrl}?filterByFormula=${encodeURIComponent(filterFormula)}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      },
+    });
+
+    if (!sessionResponse.ok) {
+      throw new Error(`Airtable API error: ${sessionResponse.status}`);
+    }
+
+    const sessionData = await sessionResponse.json();
+    
+    if (!sessionData.records || sessionData.records.length === 0) {
+      // No active session
+      return NextResponse.json({ session: null });
+    }
+
+    const session = sessionData.records[0];
+    
+    // Fetch time blocks for this session
+    const timeBlockUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_TIMEBLOCKS_TABLE_ID}`;
+    
+    const timeBlockResponse = await fetch(timeBlockUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      },
+    });
+
+    let activeTimeBlockId = null;
+    if (timeBlockResponse.ok) {
+      const timeBlockData = await timeBlockResponse.json();
+      const allBlocks = timeBlockData.records || [];
+      
+      // Find blocks linked to this session without endTime
+      const activeBlock = allBlocks.find((record: any) => {
+        const sessionLinks = record.fields.WorkSessions || [];
+        return sessionLinks.includes(session.id) && !record.fields.EndTime;
+      });
+      
+      if (activeBlock) {
+        activeTimeBlockId = activeBlock.id;
+      }
+    }
+
+    return NextResponse.json({
+      session: {
+        id: session.id,
+        serviceType: session.fields.ServiceType,
+        date: session.fields.Date,
+        status: session.fields.Status,
+        activeTimeBlockId,
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching session:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch session. Please try again.' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/sessions
  * Create a new work session (for clock in)
  */

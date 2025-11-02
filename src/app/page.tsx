@@ -19,6 +19,7 @@ export default function Home() {
     startTimeBlock,
     stopTimeBlock,
     updateElapsedTime,
+    syncFromAirtable,
     isActive,
   } = useTimerStore()
 
@@ -45,6 +46,16 @@ export default function Home() {
 
     return () => clearInterval(interval)
   }, [activeSessionId, activeTimeBlockId, updateElapsedTime, isActive])
+
+  // Auto-refresh timer state from Airtable every 3 seconds
+  // This syncs data from other devices/tabs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncFromAirtable()
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [syncFromAirtable])
 
   // Update break status
   useEffect(() => {

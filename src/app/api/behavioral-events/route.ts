@@ -31,6 +31,42 @@ export async function POST(request: Request) {
       );
     }
 
+    // Handle manual entry (no active session)
+    const isManualEntry = sessionId === 'manual-entry';
+
+    // CRITICAL: If not manual entry, verify session exists and is Active
+    if (!isManualEntry) {
+      try {
+        const sessionUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.AIRTABLE_WORKSESSIONS_TABLE_ID}/${sessionId}`;
+        const sessionResponse = await fetch(sessionUrl, {
+          headers: {
+            'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          },
+        });
+
+        if (!sessionResponse.ok) {
+          return NextResponse.json(
+            { error: 'Invalid session ID. Please clock in first.' },
+            { status: 404 }
+          );
+        }
+
+        const sessionData = await sessionResponse.json();
+        if (sessionData.fields.Status !== 'Active' && sessionData.fields.Status !== 'Completed') {
+          return NextResponse.json(
+            { error: 'Session is not valid. Please clock in again.' },
+            { status: 400 }
+          );
+        }
+      } catch (sessionError) {
+        console.error('Error validating session:', sessionError);
+        return NextResponse.json(
+          { error: 'Failed to validate session. Please try again.' },
+          { status: 500 }
+        );
+      }
+    }
+
     // Build notes with prompt count if provided
     let finalNotes = notes?.trim() || '';
     if (promptCount > 0) {
@@ -38,8 +74,6 @@ export async function POST(request: Request) {
       finalNotes = finalNotes ? `${finalNotes}\n\n${promptInfo}` : promptInfo;
     }
 
-    // Handle manual entry (no active session)
-    const isManualEntry = sessionId === 'manual-entry';
     const fields: any = {
       Name: `${eventType} Event`,
       Outcomes: [outcomeId],

@@ -1,22 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { v4 as uuidv4 } from 'uuid'
-import { db } from './offline-db'
 
 /**
  * Timer Store using Zustand
  * 
  * Manages active work session state with localStorage persistence
- * Handles clock in/out, time blocks, and behavioral events
+ * Handles clock in/out, time blocks via direct API calls to Airtable
+ * NO IndexedDB - all data saved immediately to Airtable
  */
 
 type ServiceType = 'CLS' | 'Supported Employment'
-
-interface TimeBlock {
-  id: string
-  startTime: string
-  endTime: string | null
-}
 
 interface TimerState {
   // Session State
@@ -66,11 +59,11 @@ export const useTimerStore = create<TimerState>()(
       elapsedSeconds: 0,
       lastUpdateTime: null,
 
-      // Clock In - Creates new work session
+      // Clock In - Creates new work session via API
       clockIn: async (serviceType: ServiceType, userId: string) => {
         const state = get()
         
-        // Prevent double clock-in (check again in case of race condition)
+        // Prevent double clock-in
         if (state.activeSessionId) {
           console.warn('Already clocked in - race condition prevented')
           throw new Error('Already clocked in. Please clock out first.')
@@ -87,31 +80,54 @@ export const useTimerStore = create<TimerState>()(
           throw new Error(`Invalid service type: ${serviceType}`)
         }
 
-        const sessionId = uuidv4()
         const now = new Date()
         const dateStr = now.toISOString().split('T')[0] // YYYY-MM-DD
 
         try {
-          // Create session in local DB
-          await db.workSessions.add({
-            id: sessionId,
-            userId: userId,
-            date: dateStr,
-            serviceType: serviceType,
-            status: 'Active',
-            createdAt: now.toISOString(),
-            syncStatus: 'pending',
+          // Create session in Airtable
+          const sessionResponse = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: dateStr,
+              serviceType: serviceType,
+              userId: userId,
+              status: 'Active',
+            }),
           })
 
+          if (!sessionResponse.ok) {
+            const error = await sessionResponse.json()
+            // Handle specific errors
+            if (sessionResponse.status === 409) {
+              throw new Error('You already have an active session. Please clock out first.')
+            }
+            if (sessionResponse.status === 504) {
+              throw new Error('Connection timeout. Please check your internet and try again.')
+            }
+            throw new Error(error.error || 'Failed to clock in. Please try again.')
+          }
+
+          const sessionData = await sessionResponse.json()
+          const sessionId = sessionData.sessionId
+
           // Automatically start first time block
-          const timeBlockId = uuidv4()
-          await db.timeBlocks.add({
-            id: timeBlockId,
-            workSessionId: sessionId,
-            startTime: now.toISOString(),
-            endTime: null,
-            syncStatus: 'pending',
+          const timeBlockResponse = await fetch('/api/time-blocks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: sessionId,
+              startTime: now.toISOString(),
+            }),
           })
+
+          if (!timeBlockResponse.ok) {
+            const error = await timeBlockResponse.json()
+            throw new Error(error.error || 'Clocked in but failed to start timer. Please contact support.')
+          }
+
+          const timeBlockData = await timeBlockResponse.json()
+          const timeBlockId = timeBlockData.id
 
           set({
             activeSessionId: sessionId,
@@ -127,11 +143,15 @@ export const useTimerStore = create<TimerState>()(
           console.log('Clocked in:', { sessionId, serviceType, userId })
         } catch (error) {
           console.error('Error clocking in:', error)
-          throw error
+          // Re-throw with user-friendly message
+          if (error instanceof Error) {
+            throw error
+          }
+          throw new Error('Failed to clock in. Please check your connection and try again.')
         }
       },
 
-      // Clock Out - Ends session and final time block
+      // Clock Out - Ends session and final time block via API
       clockOut: async () => {
         const state = get()
 
@@ -146,24 +166,43 @@ export const useTimerStore = create<TimerState>()(
         if (state.elapsedSeconds > 16 * 60 * 60) {
           const hours = Math.floor(state.elapsedSeconds / 3600)
           console.warn(`Session is ${hours} hours long - possible forgotten clock-out`)
+          // Show warning but allow clock out
         }
 
         try {
           // Close active time block if exists
           if (state.activeTimeBlockId) {
-            await db.timeBlocks.update(state.activeTimeBlockId, {
-              endTime: now.toISOString(),
-              syncStatus: 'pending',
+            const blockResponse = await fetch('/api/time-blocks', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                timeBlockId: state.activeTimeBlockId,
+                endTime: now.toISOString(),
+              }),
             })
+
+            if (!blockResponse.ok) {
+              const error = await blockResponse.json()
+              throw new Error(error.error || 'Failed to save your time. Please try again.')
+            }
           }
 
-          // Update session status
-          await db.workSessions.update(state.activeSessionId, {
-            status: 'Completed',
-            syncStatus: 'pending',
+          // Update session status to Completed
+          const sessionResponse = await fetch('/api/sessions', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: state.activeSessionId,
+              status: 'Completed',
+            }),
           })
 
-          // Reset state
+          if (!sessionResponse.ok) {
+            const error = await sessionResponse.json()
+            throw new Error(error.error || 'Failed to complete clock out. Please try again.')
+          }
+
+          // Reset state only after successful API calls
           set({
             activeSessionId: null,
             activeSessionDate: null,
@@ -174,38 +213,50 @@ export const useTimerStore = create<TimerState>()(
             lastUpdateTime: null,
           })
 
-          console.log('Clocked out')
+          console.log('Clocked out successfully')
         } catch (error) {
           console.error('Error clocking out:', error)
-          throw error
+          // Re-throw with user-friendly message
+          if (error instanceof Error) {
+            throw error
+          }
+          throw new Error('Failed to clock out. Please check your connection and try again.')
         }
       },
 
-      // Start Time Block - For resuming after breaks
+      // Start Time Block - For resuming after breaks via API
       startTimeBlock: async () => {
         const state = get()
 
         if (!state.activeSessionId) {
           console.warn('No active session')
-          return
+          throw new Error('No active session')
         }
 
         if (state.activeTimeBlockId) {
           console.warn('Time block already active')
-          return
+          throw new Error('Time block already active')
         }
 
-        const timeBlockId = uuidv4()
         const now = new Date()
 
         try {
-          await db.timeBlocks.add({
-            id: timeBlockId,
-            workSessionId: state.activeSessionId,
-            startTime: now.toISOString(),
-            endTime: null,
-            syncStatus: 'pending',
+          const response = await fetch('/api/time-blocks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: state.activeSessionId,
+              startTime: now.toISOString(),
+            }),
           })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to start time block')
+          }
+
+          const data = await response.json()
+          const timeBlockId = data.id
 
           set({
             activeTimeBlockId: timeBlockId,
@@ -220,22 +271,31 @@ export const useTimerStore = create<TimerState>()(
         }
       },
 
-      // Stop Time Block - For break periods
+      // Stop Time Block - For break periods via API
       stopTimeBlock: async () => {
         const state = get()
 
         if (!state.activeTimeBlockId) {
           console.warn('No active time block')
-          return
+          throw new Error('No active time block')
         }
 
         const now = new Date()
 
         try {
-          await db.timeBlocks.update(state.activeTimeBlockId, {
-            endTime: now.toISOString(),
-            syncStatus: 'pending',
+          const response = await fetch('/api/time-blocks', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              timeBlockId: state.activeTimeBlockId,
+              endTime: now.toISOString(),
+            }),
           })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to stop time block')
+          }
 
           set({
             activeTimeBlockId: null,
@@ -250,7 +310,7 @@ export const useTimerStore = create<TimerState>()(
         }
       },
 
-      // Log Behavioral Event
+      // Log Behavioral Event via API
       logBehavioralEvent: async (
         outcomeId: string,
         eventType: 'VP' | 'PP' | 'I' | 'U',
@@ -261,34 +321,29 @@ export const useTimerStore = create<TimerState>()(
 
         if (!state.activeSessionId) {
           console.warn('No active session')
-          return
+          throw new Error('No active session - please clock in first')
         }
 
-        // Sanitize comment to prevent XSS
-        const sanitizedComment = comment
-          ? comment
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#x27;')
-              .replace(/\//g, '&#x2F;')
-              .substring(0, 500) // Enforce max length
-          : undefined
-
-        const eventId = uuidv4()
         const now = new Date()
 
         try {
-          await db.behavioralEvents.add({
-            id: eventId,
-            workSessionId: state.activeSessionId,
-            outcomeId: outcomeId,
-            timestamp: now.toISOString(),
-            eventType: eventType,
-            promptCount: promptCount,
-            comment: sanitizedComment,
-            syncStatus: 'pending',
+          const response = await fetch('/api/behavioral-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: state.activeSessionId,
+              outcomeId: outcomeId,
+              timestamp: now.toISOString(),
+              eventType: eventType,
+              promptCount: promptCount,
+              notes: comment, // API expects 'notes' not 'comment'
+            }),
           })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to log behavioral event')
+          }
 
           console.log('Behavioral event logged:', { eventType, outcomeId, promptCount })
         } catch (error) {
